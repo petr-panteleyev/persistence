@@ -6,5 +6,7 @@ build
 
 /target/
 
+nb-configuration.xml
+
 *.iml
 .idea

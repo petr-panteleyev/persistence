@@ -1,5 +1,5 @@
 /*
- *  Copyright (c) 2016, Petr Panteleyev <petr@panteleyev.org>
+ *  Copyright (c) 2016, 2017, Petr Panteleyev <petr@panteleyev.org>
  *  All rights reserved.
  *
  *  Redistribution and use in source and binary forms, with or without modification,
@@ -25,23 +25,23 @@
  */
 package org.panteleyev.persistence.test;
 
-import java.util.Arrays;
-import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
-import java.util.UUID;
 import org.panteleyev.persistence.Record;
 import org.testng.Assert;
 import org.testng.annotations.AfterMethod;
 import org.testng.annotations.BeforeMethod;
 import org.testng.annotations.Test;
+import java.util.Arrays;
+import java.util.Collections;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
 
 public class TestRecords extends Base {
     private static final int RECORD_COUNT_1 = 10;
     private static final int RECORD_COUNT_2 = 10;
 
     private static final List<Class<? extends Record>> ALL_CLASSES =
-        Arrays.asList(RecordWithAllTypes.class, Record2.class);
+        Arrays.asList(RecordWithAllTypes.class, RecordWithOptionals.class);
 
     @BeforeMethod
     public void setup() throws Exception {
@@ -54,29 +54,26 @@ public class TestRecords extends Base {
         super.cleanup();
     }
 
-    @Test(dataProvider = "cacheNoCache")
-    public void testRecordCreation(boolean useCache) throws Exception {
-        getDao().setUseCache(useCache);
-
-        getDao().createTables(Arrays.asList(RecordWithAllTypes.class));
-        getDao().preload(Arrays.asList(RecordWithAllTypes.class));
+    @Test(dataProvider = "recordClasses")
+    public void testRecordCreation(Class<? extends Record> clazz) throws Exception {
+        getDao().createTables(Collections.singletonList(clazz));
+        getDao().preload(Collections.singletonList(clazz));
 
         Map<Integer, Record> idMap = new HashMap<>();
 
         // Create all new records
         for (int i = 0; i < RECORD_COUNT_1; i++) {
-            RecordWithAllTypes newRecord = RecordWithAllTypes.newRecord(RANDOM);
-            Integer id = getDao().put(newRecord);
-            idMap.put(id, newRecord);
+            Record newRecord = givenRandomRecord(clazz);
+
+            Record result = getDao().insert(newRecord);
+            idMap.put(result.getId(), result);
         }
 
-        checkCreatedRecord(RecordWithAllTypes.class, idMap, RECORD_COUNT_1);
+        checkCreatedRecord(clazz, idMap, RECORD_COUNT_1);
     }
 
-    @Test(dataProvider = "cacheNoCache")
-    public void testParallelRecordCreation(boolean useCache) throws Exception {
-        getDao().setUseCache(useCache);
-
+    @Test
+    public void testParallelRecordCreation() throws Exception {
         getDao().createTables(ALL_CLASSES);
         getDao().preload(ALL_CLASSES);
 
@@ -85,17 +82,25 @@ public class TestRecords extends Base {
 
         Thread t1 = new Thread(() -> {
             for (int i = 0; i < RECORD_COUNT_1; i++) {
-                RecordWithAllTypes newRecord = RecordWithAllTypes.newRecord(RANDOM);
-                Integer id = getDao().put(newRecord);
-                idMap1.put(id, newRecord);
+                try {
+                    Record newRecord = givenRandomRecord(RecordWithAllTypes.class);
+                    Record result = getDao().insert(newRecord);
+                    idMap1.put(result.getId(), result);
+                } catch (Exception e) {
+                    throw new RuntimeException(e);
+                }
             }
         });
 
         Thread t2 = new Thread(() -> {
             for (int i = 0; i < RECORD_COUNT_2; i++) {
-                Record2 newRecord = new Record2(UUID.randomUUID().toString(), RANDOM.nextBoolean());
-                Integer id = getDao().put(newRecord);
-                idMap2.put(id, newRecord);
+                try {
+                    Record newRecord = givenRandomRecord(RecordWithOptionals.class);
+                    Record result = getDao().insert(newRecord);
+                    idMap2.put(result.getId(), result);
+                } catch (Exception e) {
+                    throw new RuntimeException(e);
+                }
             }
         });
 
@@ -106,136 +111,80 @@ public class TestRecords extends Base {
         t2.join();
 
         checkCreatedRecord(RecordWithAllTypes.class, idMap1, RECORD_COUNT_1);
-        checkCreatedRecord(Record2.class, idMap2, RECORD_COUNT_2);
+        checkCreatedRecord(RecordWithOptionals.class, idMap2, RECORD_COUNT_2);
     }
 
-    @Test(dataProvider = "cacheNoCache")
-    public void testRecordPutGet(boolean useCache) throws Exception {
-        getDao().setUseCache(useCache);
-
-        getDao().createTables(Arrays.asList(RecordWithAllTypes.class));
-        getDao().preload(Arrays.asList(RecordWithAllTypes.class));
+    @Test(dataProvider = "recordClasses")
+    public void testRecordPutGet(Class<? extends Record> clazz) throws Exception {
+        getDao().createTables(Collections.singletonList(clazz));
+        getDao().preload(Collections.singletonList(clazz));
 
         for (int i = 0; i < RECORD_COUNT_1; i++) {
-            RecordWithAllTypes record = RecordWithAllTypes.newRecord(RANDOM);
+            Record record = givenRandomRecord(clazz);
 
-            Integer id = getDao().put(record);
-            RecordWithAllTypes result = getDao().get(id, RecordWithAllTypes.class);
-
-            record.setId(id);
+            Record result = getDao().insert(record);
             Assert.assertEquals(result, record);
         }
     }
 
-    @Test(dataProvider = "cacheNoCache")
-    public void testRecordPutDelete(boolean useCache) throws Exception {
-        getDao().setUseCache(useCache);
-
-        getDao().createTables(Arrays.asList(RecordWithAllTypes.class));
-        getDao().preload(Arrays.asList(RecordWithAllTypes.class));
+    @Test(dataProvider = "recordClasses")
+    public void testRecordPutDelete(Class<? extends Record> clazz) throws Exception {
+        getDao().createTables(Collections.singletonList(clazz));
+        getDao().preload(Collections.singletonList(clazz));
 
         // Delete by record
         for (int i = 0; i < RECORD_COUNT_1; i++) {
-            RecordWithAllTypes record = RecordWithAllTypes.newRecord(RANDOM);
-
-            Integer id = getDao().put(record);
-            RecordWithAllTypes result = getDao().get(id, RecordWithAllTypes.class);
-
-            record.setId(id);
+            Record record = givenRandomRecord(clazz);
+            Record result = getDao().insert(record);
             Assert.assertEquals(result, record);
 
             getDao().delete(record);
-            result = getDao().get(id, RecordWithAllTypes.class);
+            result = getDao().get(record.getId(), clazz);
             Assert.assertNull(result);
         }
 
         // Delete by id
         for (int i = 0; i < RECORD_COUNT_1; i++) {
-            RecordWithAllTypes record = RecordWithAllTypes.newRecord(RANDOM);
-
-            Integer id = getDao().put(record);
-            RecordWithAllTypes result = getDao().get(id, RecordWithAllTypes.class);
-
-            record.setId(id);
+            Record record = givenRandomRecord(clazz);
+            Record result = getDao().insert(record);
             Assert.assertEquals(result, record);
 
-            getDao().delete(id, RecordWithAllTypes.class);
-            result = getDao().get(id, RecordWithAllTypes.class);
+            getDao().delete(record.getId(), clazz);
+            result = getDao().get(record.getId(), clazz);
             Assert.assertNull(result);
         }
     }
 
-    @Test(dataProvider = "cacheNoCache")
-    public void testRecordPutDeletePreloaded(boolean useCache) throws Exception {
-        getDao().setUseCache(useCache);
+    @Test(dataProvider = "recordClasses")
+    public void testRecordUpdate(Class<? extends Record> clazz) throws Exception {
+        getDao().createTables(Collections.singletonList(clazz));
+        getDao().preload(Collections.singletonList(clazz));
 
-        getDao().createTables(Arrays.asList(Record2.class));
-        getDao().preload(Arrays.asList(Record2.class));
+        Record original = givenRandomRecord(clazz);
 
-        // Delete by record
-        for (int i = 0; i < RECORD_COUNT_2; i++) {
-            Record2 record = new Record2(UUID.randomUUID().toString(), RANDOM.nextBoolean());
+        getDao().insert(original);
 
-            Integer id = getDao().put(record);
-            Record2 result = getDao().get(id, Record2.class);
+        Record updated = givenRandomRecordWithId(clazz, original.getId());
 
-            record.setId(id);
-            Assert.assertEquals(result, record);
+        Record updateResult = getDao().update(updated);
+        Assert.assertEquals(updateResult.getId(), original.getId());
 
-            getDao().delete(record);
-            result = getDao().get(id, Record2.class);
-            Assert.assertNull(result);
-        }
-
-        // Delete by id
-        for (int i = 0; i < RECORD_COUNT_2; i++) {
-            Record2 record = new Record2(UUID.randomUUID().toString(), RANDOM.nextBoolean());
-
-            Integer id = getDao().put(record);
-            Record2 result = getDao().get(id, Record2.class);
-
-            record.setId(id);
-            Assert.assertEquals(result, record);
-
-            getDao().delete(id, Record2.class);
-            result = getDao().get(id, Record2.class);
-            Assert.assertNull(result);
-        }
-    }
-
-    @Test(dataProvider = "cacheNoCache")
-    public void testRecordUpdate(boolean useCache) {
-        getDao().setUseCache(useCache);
-
-        getDao().createTables(Arrays.asList(RecordWithAllTypes.class));
-        getDao().preload(Arrays.asList(RecordWithAllTypes.class));
-
-        RecordWithAllTypes original = RecordWithAllTypes.newRecord(RANDOM);
-
-        Integer id = getDao().put(original);
-
-        RecordWithAllTypes updated = RecordWithAllTypes.newRecord(RANDOM);
-        updated.setId(id);
-
-        Integer updatedId = getDao().put(updated);
-        Assert.assertEquals(updatedId, id);
-
-        RecordWithAllTypes retrievedUpdated = getDao().get(id, RecordWithAllTypes.class);
+        Record retrievedUpdated = getDao().get(original.getId(), clazz);
+        Assert.assertEquals(retrievedUpdated, updateResult);
         Assert.assertEquals(retrievedUpdated, updated);
     }
 
-    @Test(dataProvider = "cacheNoCache")
-    public void testNullFields(boolean useCache) throws Exception {
-        getDao().setUseCache(useCache);
+    @Test(dataProvider = "recordClasses")
+    public void testNullFields(Class<? extends Record> clazz) throws Exception {
+        getDao().createTables(Collections.singletonList(clazz));
+        getDao().preload(Collections.singletonList(clazz));
 
-        getDao().createTables(Arrays.asList(RecordWithAllTypes.class));
-        getDao().preload(Arrays.asList(RecordWithAllTypes.class));
+        Record record = givenNullRecord(clazz);
 
-        RecordWithAllTypes record = RecordWithAllTypes.newNullRecord();
+        Record insertResult = getDao().insert(record);
+        Assert.assertEquals(insertResult, record);
 
-        Integer id = getDao().put(record);
-
-        RecordWithAllTypes retrieved = getDao().get(id, RecordWithAllTypes.class);
+        Record retrieved = getDao().get(record.getId(), clazz);
         Assert.assertEquals(retrieved, record);
     }
 
@@ -249,7 +198,7 @@ public class TestRecords extends Base {
 
         // Check uniqueness of all primary keys
         Assert.assertEquals(result.stream()
-            .map(x -> x.getId())
+            .map(Record::getId)
             .distinct()
             .count(), count);
     }

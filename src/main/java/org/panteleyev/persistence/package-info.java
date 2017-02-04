@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2015, 2017, Petr Panteleyev <petr@panteleyev.org>
+ * Copyright (c) 2017, Petr Panteleyev <petr@panteleyev.org>
  * All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
@@ -23,19 +23,11 @@
  * ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE
  * POSSIBILITY OF SUCH DAMAGE.
  */
-package org.panteleyev.persistence.annotations;
 
 /**
- * Foreign key reference type.
+ * This package defines persistence API.
+ *
+ * @since 1.0
+ * @version 2.0
  */
-public enum ReferenceType {
-    RESTRICT,
-    CASCADE,
-    SET_NULL,
-    NO_ACTION;
-
-    @Override
-    public String toString() {
-        return name().replaceAll("_", " ");
-    }
-}
+package org.panteleyev.persistence;

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2016, 2017, Petr Panteleyev <petr@panteleyev.org>
+ * Copyright (c) 2017, Petr Panteleyev <petr@panteleyev.org>
  * All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
@@ -23,19 +23,21 @@
  * ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE
  * POSSIBILITY OF SUCH DAMAGE.
  */
+
 package org.panteleyev.persistence.test;
 
 import java.math.BigDecimal;
 import java.util.Date;
 import java.util.Objects;
+import java.util.Optional;
 import java.util.Random;
 import java.util.UUID;
 import org.panteleyev.persistence.Record;
 import org.panteleyev.persistence.annotations.Field;
 import org.panteleyev.persistence.annotations.Table;
 
-@Table("all_types_table")
-public class RecordWithAllTypes implements Record {
+@Table("optionals_table")
+public class RecordWithOptionals implements Record {
     private Integer id;
 
     // fields
@@ -46,10 +48,10 @@ public class RecordWithAllTypes implements Record {
     private Long e;
     private BigDecimal f;
 
-    public RecordWithAllTypes() {
+    public RecordWithOptionals() {
     }
 
-    public RecordWithAllTypes(Integer id, String a, Integer b, Boolean c, Date d, Long e, BigDecimal f) {
+    public RecordWithOptionals(Integer id, String a, Integer b, Boolean c, Date d, Long e, BigDecimal f) {
         this.id = id;
         this.a = a;
         this.b = b;
@@ -71,8 +73,8 @@ public class RecordWithAllTypes implements Record {
     }
 
     @Field(value = "a")
-    public String getA() {
-        return a;
+    public Optional<String> getA() {
+        return Optional.ofNullable(a);
     }
 
     public void setA(String a) {
@@ -80,8 +82,8 @@ public class RecordWithAllTypes implements Record {
     }
 
     @Field(value = "b")
-    public Integer getB() {
-        return b;
+    public Optional<Integer> getB() {
+        return Optional.ofNullable(b);
     }
 
     public void setB(Integer b) {
@@ -89,8 +91,8 @@ public class RecordWithAllTypes implements Record {
     }
 
     @Field(value = "c")
-    public Boolean getC() {
-        return c;
+    public Optional<Boolean> getC() {
+        return Optional.ofNullable(c);
     }
 
     public void setC(Boolean c) {
@@ -98,8 +100,8 @@ public class RecordWithAllTypes implements Record {
     }
 
     @Field(value = "d")
-    public Date getD() {
-        return d;
+    public Optional<Date> getD() {
+        return Optional.ofNullable(d);
     }
 
     public void setD(Date d) {
@@ -107,8 +109,8 @@ public class RecordWithAllTypes implements Record {
     }
 
     @Field(value = "e")
-    public Long getE() {
-        return e;
+    public Optional<Long> getE() {
+        return Optional.ofNullable(e);
     }
 
     public void setE(Long e) {
@@ -116,16 +118,16 @@ public class RecordWithAllTypes implements Record {
     }
 
     @Field(value = "f")
-    public BigDecimal getF() {
-        return f;
+    public Optional<BigDecimal> getF() {
+        return Optional.ofNullable(f);
     }
 
     public void setF(BigDecimal f) {
         this.f = f;
     }
 
-    public static RecordWithAllTypes newRecord(Integer id, Random random) {
-        return new RecordWithAllTypes(
+    public static RecordWithOptionals newRecord(Integer id, Random random) {
+        return new RecordWithOptionals(
                 id,
                 UUID.randomUUID().toString(),
                 random.nextInt(),
@@ -136,8 +138,8 @@ public class RecordWithAllTypes implements Record {
         );
     }
 
-    public static RecordWithAllTypes newNullRecord(Integer id) {
-        return new RecordWithAllTypes(
+    public static RecordWithOptionals newNullRecord(Integer id) {
+        return new RecordWithOptionals(
                 id,
                 null,
                 null,
@@ -150,8 +152,8 @@ public class RecordWithAllTypes implements Record {
 
     @Override
     public boolean equals(Object o) {
-        if (o instanceof RecordWithAllTypes) {
-            RecordWithAllTypes that = (RecordWithAllTypes)o;
+        if (o instanceof RecordWithOptionals) {
+            RecordWithOptionals that = (RecordWithOptionals)o;
 
             return Objects.equals(this.id, that.id)
                 && Objects.equals(this.a, that.a)

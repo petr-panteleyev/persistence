@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2015, 2017, Petr Panteleyev <petr@panteleyev.org>
+ * Copyright (c) 2017, Petr Panteleyev <petr@panteleyev.org>
  * All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
@@ -25,17 +25,18 @@
  */
 package org.panteleyev.persistence.annotations;
 
-/**
- * Foreign key reference type.
- */
-public enum ReferenceType {
-    RESTRICT,
-    CASCADE,
-    SET_NULL,
-    NO_ACTION;
+import java.lang.annotation.ElementType;
+import java.lang.annotation.Retention;
+import java.lang.annotation.RetentionPolicy;
+import java.lang.annotation.Target;
 
-    @Override
-    public String toString() {
-        return name().replaceAll("_", " ");
-    }
+/**
+ * Defines constructor used for record retrieval. All parameters of such constructor must be annotated with
+ * {@link Field} annotation.
+ *
+ * @since 2.0
+ */
+@Retention(RetentionPolicy.RUNTIME)
+@Target(ElementType.CONSTRUCTOR)
+public @interface RecordBuilder {
 }

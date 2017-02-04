@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2016, 2017, Petr Panteleyev <petr@panteleyev.org>
+ * Copyright (c) 2017, Petr Panteleyev <petr@panteleyev.org>
  * All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
@@ -23,33 +23,40 @@
  * ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE
  * POSSIBILITY OF SUCH DAMAGE.
  */
+
 package org.panteleyev.persistence.test;
 
+import org.panteleyev.persistence.Record;
+import org.panteleyev.persistence.annotations.Field;
+import org.panteleyev.persistence.annotations.RecordBuilder;
+import org.panteleyev.persistence.annotations.Table;
 import java.math.BigDecimal;
 import java.util.Date;
 import java.util.Objects;
 import java.util.Random;
 import java.util.UUID;
-import org.panteleyev.persistence.Record;
-import org.panteleyev.persistence.annotations.Field;
-import org.panteleyev.persistence.annotations.Table;
 
-@Table("all_types_table")
-public class RecordWithAllTypes implements Record {
-    private Integer id;
+@Table("immutable_table")
+public class ImmutableRecord implements Record {
+    private final Integer id;
 
     // fields
-    private String a;
-    private Integer b;
-    private Boolean c;
-    private Date d;
-    private Long e;
-    private BigDecimal f;
+    private final String a;
+    private final Integer b;
+    private final Boolean c;
+    private final Date d;
+    private final Long e;
+    private final BigDecimal f;
 
-    public RecordWithAllTypes() {
-    }
-
-    public RecordWithAllTypes(Integer id, String a, Integer b, Boolean c, Date d, Long e, BigDecimal f) {
+    @RecordBuilder
+    public ImmutableRecord(
+            @Field("id") Integer id,
+            @Field("a") String a,
+            @Field("b") Integer b,
+            @Field("c") Boolean c,
+            @Field("d") Date d,
+            @Field("e") Long e,
+            @Field("f") BigDecimal f) {
         this.id = id;
         this.a = a;
         this.b = b;
@@ -65,18 +72,9 @@ public class RecordWithAllTypes implements Record {
         return id;
     }
 
-    @Override
-    public void setId(Integer id) {
-        this.id = id;
-    }
-
     @Field(value = "a")
     public String getA() {
         return a;
-    }
-
-    public void setA(String a) {
-        this.a = a;
     }
 
     @Field(value = "b")
@@ -84,17 +82,9 @@ public class RecordWithAllTypes implements Record {
         return b;
     }
 
-    public void setB(Integer b) {
-        this.b = b;
-    }
-
     @Field(value = "c")
     public Boolean getC() {
         return c;
-    }
-
-    public void setC(Boolean c) {
-        this.c = c;
     }
 
     @Field(value = "d")
@@ -102,17 +92,9 @@ public class RecordWithAllTypes implements Record {
         return d;
     }
 
-    public void setD(Date d) {
-        this.d = d;
-    }
-
     @Field(value = "e")
     public Long getE() {
         return e;
-    }
-
-    public void setE(Long e) {
-        this.e = e;
     }
 
     @Field(value = "f")
@@ -120,12 +102,8 @@ public class RecordWithAllTypes implements Record {
         return f;
     }
 
-    public void setF(BigDecimal f) {
-        this.f = f;
-    }
-
-    public static RecordWithAllTypes newRecord(Integer id, Random random) {
-        return new RecordWithAllTypes(
+    public static ImmutableRecord newRecord(Integer id, Random random) {
+        return new ImmutableRecord(
                 id,
                 UUID.randomUUID().toString(),
                 random.nextInt(),
@@ -136,8 +114,8 @@ public class RecordWithAllTypes implements Record {
         );
     }
 
-    public static RecordWithAllTypes newNullRecord(Integer id) {
-        return new RecordWithAllTypes(
+    public static ImmutableRecord newNullRecord(Integer id) {
+        return new ImmutableRecord(
                 id,
                 null,
                 null,
@@ -150,16 +128,16 @@ public class RecordWithAllTypes implements Record {
 
     @Override
     public boolean equals(Object o) {
-        if (o instanceof RecordWithAllTypes) {
-            RecordWithAllTypes that = (RecordWithAllTypes)o;
+        if (o instanceof ImmutableRecord) {
+            ImmutableRecord that = (ImmutableRecord)o;
 
             return Objects.equals(this.id, that.id)
-                && Objects.equals(this.a, that.a)
-                && Objects.equals(this.b, that.b)
-                && Objects.equals(this.c, that.c)
-                && Objects.equals(this.d, that.d)
-                && Objects.equals(this.e, that.e)
-                && Objects.equals(this.f, that.f);
+                    && Objects.equals(this.a, that.a)
+                    && Objects.equals(this.b, that.b)
+                    && Objects.equals(this.c, that.c)
+                    && Objects.equals(this.d, that.d)
+                    && Objects.equals(this.e, that.e)
+                    && Objects.equals(this.f, that.f);
         } else {
             return false;
         }
