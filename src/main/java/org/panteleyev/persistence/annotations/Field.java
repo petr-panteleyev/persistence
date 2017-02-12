@@ -43,6 +43,21 @@ public @interface Field {
     String ID = "id";
 
     /**
+     * Default field length.
+     */
+    int LENGTH = 255;
+
+    /**
+     * Default scale of BigDecimal field.
+     */
+    int SCALE = 6;
+
+    /**
+     * Default precision of BigDecimal field.
+     */
+    int PRECISION = 15;
+
+    /**
      * SQL name of the field.
      * @return name of the field
      */
@@ -64,17 +79,17 @@ public @interface Field {
      * Defines length of the field.
      * @return length of the field
      */
-    int length() default 255;
+    int length() default LENGTH;
 
     /**
-     * Defines precision. Applicable to numeric data types.
-     * @return precision
+     * Defines PRECISION. Applicable to numeric data types.
+     * @return PRECISION
      */
-    int precision() default 15;
+    int precision() default PRECISION;
 
     /**
-     * Defines scale. Applicable to numeric data types.
-     * @return scale
+     * Defines SCALE. Applicable to numeric data types.
+     * @return SCALE
      */
-    int scale() default 6;
+    int scale() default SCALE;
 }
