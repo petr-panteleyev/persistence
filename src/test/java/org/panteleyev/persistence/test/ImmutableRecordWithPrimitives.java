@@ -22,52 +22,36 @@
  * CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE)
  * ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE
  * POSSIBILITY OF SUCH DAMAGE.
+ *
  */
-
 package org.panteleyev.persistence.test;
 
 import org.panteleyev.persistence.Record;
 import org.panteleyev.persistence.annotations.Field;
 import org.panteleyev.persistence.annotations.RecordBuilder;
 import org.panteleyev.persistence.annotations.Table;
-import java.math.BigDecimal;
-import java.util.Date;
 import java.util.Objects;
 import java.util.Random;
-import java.util.UUID;
 
-@Table("immutable_table")
-public class ImmutableRecord implements Record {
-    private final Integer id;
+@Table("immutable_primitives_table")
+public class ImmutableRecordWithPrimitives implements Record {
+    private Integer id;
 
-    // fields
-    private final String a;
-    private final Integer b;
-    private final Boolean c;
-    private final Date d;
-    private final Long e;
-    private final BigDecimal f;
-    private final EnumType g;
+    private final int a;
+    private final boolean b;
+    private final long c;
 
     @RecordBuilder
-    public ImmutableRecord(
+    public ImmutableRecordWithPrimitives(
             @Field("id") Integer id,
-            @Field("a") String a,
-            @Field("b") Integer b,
-            @Field("c") Boolean c,
-            @Field("d") Date d,
-            @Field("e") Long e,
-            @Field("f") BigDecimal f,
-            @Field("g") EnumType g
+            @Field("a") int a,
+            @Field("b") boolean b,
+            @Field("c") long c
     ) {
         this.id = id;
         this.a = a;
         this.b = b;
         this.c = c;
-        this.d = d;
-        this.e = e;
-        this.f = f;
-        this.g = g;
     }
 
     @Field(value = Field.ID, primaryKey = true)
@@ -77,79 +61,51 @@ public class ImmutableRecord implements Record {
     }
 
     @Field("a")
-    public String getA() {
+    public int getA() {
         return a;
     }
 
     @Field("b")
-    public Integer getB() {
+    public boolean getB() {
         return b;
     }
 
     @Field("c")
-    public Boolean getC() {
+    public long getC() {
         return c;
     }
 
-    @Field("d")
-    public Date getD() {
-        return d;
-    }
-
-    @Field("e")
-    public Long getE() {
-        return e;
-    }
-
-    @Field("f")
-    public BigDecimal getF() {
-        return f;
-    }
-
-    @Field("g")
-    public EnumType getG() {
-        return g;
-    }
-
-    public static ImmutableRecord newRecord(Integer id, Random random) {
-        return new ImmutableRecord(
+    public static ImmutableRecordWithPrimitives newRecord(Integer id, Random random) {
+        return new ImmutableRecordWithPrimitives(
                 id,
-                UUID.randomUUID().toString(),
                 random.nextInt(),
                 random.nextBoolean(),
-                new Date(),
-                random.nextLong(),
-                BigDecimal.TEN,
-                EnumType.F1
+                random.nextLong()
         );
     }
 
-    public static ImmutableRecord newNullRecord(Integer id) {
-        return new ImmutableRecord(
+    public static ImmutableRecordWithPrimitives newNullRecord(Integer id) {
+        return new ImmutableRecordWithPrimitives(
                 id,
-                null,
-                null,
-                null,
-                null,
-                null,
-                null,
-                null
+                0,
+                false,
+                0l
         );
     }
 
     @Override
     public boolean equals(Object o) {
-        if (o instanceof ImmutableRecord) {
-            ImmutableRecord that = (ImmutableRecord)o;
+        if (this == o) {
+            return true;
+        }
+
+        if (o instanceof ImmutableRecordWithPrimitives) {
+            ImmutableRecordWithPrimitives that = (ImmutableRecordWithPrimitives)o;
 
             return Objects.equals(this.id, that.id)
                     && Objects.equals(this.a, that.a)
                     && Objects.equals(this.b, that.b)
-                    && Objects.equals(this.c, that.c)
-                    && Objects.equals(this.d, that.d)
-                    && Objects.equals(this.e, that.e)
-                    && Objects.equals(this.f, that.f)
-                    && Objects.equals(this.g, that.g);
+                    && Objects.equals(this.c, that.c);
         } else {
             return false;
         }
@@ -157,6 +113,6 @@ public class ImmutableRecord implements Record {
 
     @Override
     public int hashCode() {
-        return Objects.hash(a, b, c, d, e, f, g);
+        return Objects.hash(a, b, c);
     }
 }

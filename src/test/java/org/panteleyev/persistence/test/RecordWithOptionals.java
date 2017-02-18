@@ -47,11 +47,12 @@ public class RecordWithOptionals implements Record {
     private Date d;
     private Long e;
     private BigDecimal f;
+    private EnumType g;
 
     public RecordWithOptionals() {
     }
 
-    public RecordWithOptionals(Integer id, String a, Integer b, Boolean c, Date d, Long e, BigDecimal f) {
+    public RecordWithOptionals(Integer id, String a, Integer b, Boolean c, Date d, Long e, BigDecimal f, EnumType g) {
         this.id = id;
         this.a = a;
         this.b = b;
@@ -59,6 +60,7 @@ public class RecordWithOptionals implements Record {
         this.d = d;
         this.e = e;
         this.f = f;
+        this.g = g;
     }
 
     @Field(value = Field.ID, primaryKey = true)
@@ -72,7 +74,7 @@ public class RecordWithOptionals implements Record {
         this.id = id;
     }
 
-    @Field(value = "a")
+    @Field("a")
     public Optional<String> getA() {
         return Optional.ofNullable(a);
     }
@@ -81,7 +83,7 @@ public class RecordWithOptionals implements Record {
         this.a = a;
     }
 
-    @Field(value = "b")
+    @Field("b")
     public Optional<Integer> getB() {
         return Optional.ofNullable(b);
     }
@@ -90,7 +92,7 @@ public class RecordWithOptionals implements Record {
         this.b = b;
     }
 
-    @Field(value = "c")
+    @Field("c")
     public Optional<Boolean> getC() {
         return Optional.ofNullable(c);
     }
@@ -99,7 +101,7 @@ public class RecordWithOptionals implements Record {
         this.c = c;
     }
 
-    @Field(value = "d")
+    @Field("d")
     public Optional<Date> getD() {
         return Optional.ofNullable(d);
     }
@@ -108,7 +110,7 @@ public class RecordWithOptionals implements Record {
         this.d = d;
     }
 
-    @Field(value = "e")
+    @Field("e")
     public Optional<Long> getE() {
         return Optional.ofNullable(e);
     }
@@ -117,7 +119,7 @@ public class RecordWithOptionals implements Record {
         this.e = e;
     }
 
-    @Field(value = "f")
+    @Field("f")
     public Optional<BigDecimal> getF() {
         return Optional.ofNullable(f);
     }
@@ -125,6 +127,16 @@ public class RecordWithOptionals implements Record {
     public void setF(BigDecimal f) {
         this.f = f;
     }
+
+    @Field("g")
+    public Optional<EnumType> getG() {
+        return Optional.ofNullable(g);
+    }
+
+    public void setG(EnumType g) {
+        this.g = g;
+    }
+
 
     public static RecordWithOptionals newRecord(Integer id, Random random) {
         return new RecordWithOptionals(
@@ -134,13 +146,15 @@ public class RecordWithOptionals implements Record {
                 random.nextBoolean(),
                 new Date(),
                 random.nextLong(),
-                BigDecimal.TEN
+                BigDecimal.TEN,
+                EnumType.F3
         );
     }
 
     public static RecordWithOptionals newNullRecord(Integer id) {
         return new RecordWithOptionals(
                 id,
+                null,
                 null,
                 null,
                 null,
@@ -156,12 +170,13 @@ public class RecordWithOptionals implements Record {
             RecordWithOptionals that = (RecordWithOptionals)o;
 
             return Objects.equals(this.id, that.id)
-                && Objects.equals(this.a, that.a)
-                && Objects.equals(this.b, that.b)
-                && Objects.equals(this.c, that.c)
-                && Objects.equals(this.d, that.d)
-                && Objects.equals(this.e, that.e)
-                && Objects.equals(this.f, that.f);
+                    && Objects.equals(this.a, that.a)
+                    && Objects.equals(this.b, that.b)
+                    && Objects.equals(this.c, that.c)
+                    && Objects.equals(this.d, that.d)
+                    && Objects.equals(this.e, that.e)
+                    && Objects.equals(this.f, that.f)
+                    && Objects.equals(this.g, that.g);
         } else {
             return false;
         }
@@ -169,14 +184,6 @@ public class RecordWithOptionals implements Record {
 
     @Override
     public int hashCode() {
-        int hash = 5;
-        hash = 29 * hash + Objects.hashCode(this.id);
-        hash = 29 * hash + Objects.hashCode(this.a);
-        hash = 29 * hash + Objects.hashCode(this.b);
-        hash = 29 * hash + Objects.hashCode(this.c);
-        hash = 29 * hash + Objects.hashCode(this.d);
-        hash = 29 * hash + Objects.hashCode(this.e);
-        hash = 29 * hash + Objects.hashCode(this.f);
-        return hash;
+        return Objects.hash(a, b, c, d, e, f, g);
     }
 }

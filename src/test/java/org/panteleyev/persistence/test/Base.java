@@ -66,6 +66,8 @@ class Base {
                 { RecordWithAllTypes.class },
                 { RecordWithOptionals.class },
                 { ImmutableRecord.class },
+                { RecordWithPrimitives.class },
+                { ImmutableRecordWithPrimitives.class },
         };
     }
 

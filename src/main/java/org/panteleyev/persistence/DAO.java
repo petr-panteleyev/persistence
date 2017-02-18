@@ -62,7 +62,6 @@ import org.sqlite.SQLiteDataSource;
  * Persistence API entry point.
  */
 public abstract class DAO {
-    private static final String TYPE_OPTIONAL    = "java.util.Optional";
     private static final String TYPE_BIG_DECIMAL = "java.math.BigDecimal";
     private static final String TYPE_DATE        = "java.util.Date";
     private static final String TYPE_LONG        = "java.lang.Long";
@@ -72,6 +71,8 @@ public abstract class DAO {
     private static final String TYPE_LONG_PRIM   = "long";
     private static final String TYPE_INT         = "int";
     private static final String TYPE_BOOL        = "boolean";
+
+    private static final String TYPE_ENUM        = "*** enum ***";
 
     private static final String BAD_FIELD_TYPE   = "Unsupported field type";
     private static final String NOT_ANNOTATED    = "Class is not properly annotated";
@@ -210,8 +211,10 @@ public abstract class DAO {
         }
     }
 
-    private Object getFieldValue(String fieldName, String typeName, ResultSet set) throws SQLException {
+    private Object getFieldValue(String fieldName, Class typeClass, ResultSet set) throws SQLException {
         Object value = set.getObject(fieldName);
+
+        String typeName = typeClass.isEnum()? TYPE_ENUM : typeClass.getName();
 
         if (value != null) {
             switch (typeName) {
@@ -232,13 +235,15 @@ public abstract class DAO {
                 case TYPE_DATE :
                     value = new Date(set.getLong(fieldName));
                     break;
+                case TYPE_ENUM :
+                    value = Enum.valueOf(typeClass, (String)value);
+                    break;
                 default:
                     throw new IllegalStateException(BAD_FIELD_TYPE);
             }
         }
 
         return value;
-
     }
 
     private <T extends Record> T fromSQL(ResultSet set, Constructor<?> constructor) throws SQLException, IllegalAccessException, InvocationTargetException, InstantiationException {
@@ -255,7 +260,7 @@ public abstract class DAO {
                     .map(a -> ((Field)a).value())
                     .orElseThrow(RuntimeException::new);
 
-            params[i] = getFieldValue(fieldName, paramTypes[i].getName(), set);
+            params[i] = getFieldValue(fieldName, paramTypes[i], set);
         }
 
         return (T)constructor.newInstance(params);
@@ -269,11 +274,9 @@ public abstract class DAO {
                 Method getter = pd.getReadMethod();
                 Method setter = pd.getWriteMethod();
 
-                String typeName = pd.getPropertyType().getName();
-
-                if (typeName.equals(TYPE_OPTIONAL) && setter == null) {
-                    // find setter manually
-                    typeName = getOptionalTypeName(getter);
+                Class getterClass = getter.getReturnType();
+                if (getterClass.equals(Optional.class)) {
+                    getterClass = getEffectiveType(getter);
 
                     String setterName = getter.getName().replace("get", "set");
                     for (Method m : record.getClass().getDeclaredMethods()) {
@@ -284,10 +287,10 @@ public abstract class DAO {
                     }
                 }
 
-                if (getter != null && setter != null) {
+                if (setter != null) {
                     Field fld = getter.getAnnotation(Field.class);
                     if (fld != null) {
-                        setter.invoke(record, getFieldValue(fld.value(),typeName, set));
+                        setter.invoke(record, getFieldValue(fld.value(), getterClass, set));
                     }
                 }
             }
@@ -296,16 +299,18 @@ public abstract class DAO {
         }
     }
 
-    private String getOptionalTypeName(Method getter) {
+    private Class getEffectiveType(Method getter) {
         Type rType = getter.getGenericReturnType();
+
         if (rType instanceof ParameterizedType) {
             Type[] actualTypeArguments = ((ParameterizedType)rType).getActualTypeArguments();
             if (actualTypeArguments.length != 1) {
                 throw new IllegalStateException(BAD_FIELD_TYPE);
+            } else {
+                return (Class)actualTypeArguments[0];
             }
-            return actualTypeArguments[0].getTypeName();
         } else {
-            throw new IllegalStateException(BAD_FIELD_TYPE);
+            return (Class)rType;
         }
     }
 
@@ -349,10 +354,9 @@ public abstract class DAO {
                             Field fld = getter.getAnnotation(Field.class);
                             String fName = fld.value();
 
-                            String typeName = pd.getPropertyType().getName();
-                            if (typeName.equals(TYPE_OPTIONAL)) {
-                                typeName = getOptionalTypeName(getter);
-                            }
+                            Class getterType = getEffectiveType(getter);
+                            String typeName = getterType.isEnum() ?
+                                    TYPE_ENUM : getterType.getTypeName();
 
                             if (!first) {
                                 b.append(",");
@@ -362,7 +366,8 @@ public abstract class DAO {
                             b.append(fName).append(" ");
 
                             switch (typeName) {
-                                case TYPE_STRING :
+                                case TYPE_STRING:
+                                case TYPE_ENUM:
                                     b.append("VARCHAR(")
                                         .append(fld.length())
                                         .append(")");
@@ -587,12 +592,12 @@ public abstract class DAO {
                         continue;
                     }
 
-                    String typeName = pd.getPropertyType().getName();
-
                     Object value = getter.invoke(record);
 
-                    if (typeName.equals(TYPE_OPTIONAL)) {
-                        typeName = getOptionalTypeName(getter);
+                    Class getterClass = getter.getReturnType();
+
+                    if (getterClass.equals(Optional.class)) {
+                        getterClass = getEffectiveType(getter);
 
                         Method isPresentMethod = Optional.class.getDeclaredMethod("isPresent");
                         if ((Boolean)isPresentMethod.invoke(value)) {
@@ -603,6 +608,8 @@ public abstract class DAO {
                             value = null;
                         }
                     }
+
+                    String typeName = getterClass.isEnum()? TYPE_ENUM : getterClass.getName();
 
                     switch (typeName) {
                         case TYPE_STRING :
@@ -648,6 +655,13 @@ public abstract class DAO {
                                 st.setNull(index++, Types.DECIMAL);
                             } else {
                                 st.setBigDecimal(index++, (BigDecimal)value);
+                            }
+                            break;
+                        case TYPE_ENUM:
+                            if (value == null) {
+                                st.setNull(index++, Types.VARCHAR);
+                            } else {
+                                st.setString(index++, ((Enum)value).name());
                             }
                             break;
                         default:

@@ -7,5 +7,5 @@ Annotation based wrapper for SQLite.
 ### Dependency
 
 ```
-org.panteleyev:persistence:2.1.0
+org.panteleyev:persistence:2.2.0
 ```

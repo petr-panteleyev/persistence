@@ -198,8 +198,8 @@ public class TestRecords extends Base {
 
         // Check uniqueness of all primary keys
         Assert.assertEquals(result.stream()
-            .map(Record::getId)
-            .distinct()
-            .count(), count);
+                .map(Record::getId)
+                .distinct()
+                .count(), count);
     }
 }

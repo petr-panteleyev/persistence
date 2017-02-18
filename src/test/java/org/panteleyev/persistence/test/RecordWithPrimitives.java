@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2016, 2017, Petr Panteleyev <petr@panteleyev.org>
+ * Copyright (c) 2017, Petr Panteleyev <petr@panteleyev.org>
  * All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
@@ -22,43 +22,33 @@
  * CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE)
  * ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE
  * POSSIBILITY OF SUCH DAMAGE.
+ *
  */
 package org.panteleyev.persistence.test;
 
-import java.math.BigDecimal;
-import java.util.Date;
-import java.util.Objects;
-import java.util.Random;
-import java.util.UUID;
 import org.panteleyev.persistence.Record;
 import org.panteleyev.persistence.annotations.Field;
 import org.panteleyev.persistence.annotations.Table;
+import java.util.Objects;
+import java.util.Random;
 
-@Table("all_types_table")
-public class RecordWithAllTypes implements Record {
+@Table("primitives_table")
+public class RecordWithPrimitives implements Record {
     private Integer id;
 
-    // fields
-    private String a;
-    private Integer b;
-    private Boolean c;
-    private Date d;
-    private Long e;
-    private BigDecimal f;
-    private EnumType g;
+    private int a;
+    private boolean b;
+    private long c;
 
-    public RecordWithAllTypes() {
+    public RecordWithPrimitives() {
+        this(0, 0, false, 0l);
     }
 
-    public RecordWithAllTypes(Integer id, String a, Integer b, Boolean c, Date d, Long e, BigDecimal f, EnumType g) {
+    public RecordWithPrimitives(Integer id, int a, boolean b, long c) {
         this.id = id;
         this.a = a;
         this.b = b;
         this.c = c;
-        this.d = d;
-        this.e = e;
-        this.f = f;
-        this.g = g;
     }
 
     @Field(value = Field.ID, primaryKey = true)
@@ -72,108 +62,64 @@ public class RecordWithAllTypes implements Record {
         this.id = id;
     }
 
-    @Field("a")
-    public String getA() {
+    @Field(value = "a")
+    public int getA() {
         return a;
     }
 
-    public void setA(String a) {
+    public void setA(int a) {
         this.a = a;
     }
 
-    @Field("b")
-    public Integer getB() {
+    @Field(value = "b")
+    public boolean getB() {
         return b;
     }
 
-    public void setB(Integer b) {
+    public void setB(boolean b) {
         this.b = b;
     }
 
-    @Field("c")
-    public Boolean getC() {
+    @Field(value = "c")
+    public long getC() {
         return c;
     }
 
-    public void setC(Boolean c) {
+    public void setC(long c) {
         this.c = c;
     }
 
-    @Field("d")
-    public Date getD() {
-        return d;
-    }
-
-    public void setD(Date d) {
-        this.d = d;
-    }
-
-    @Field("e")
-    public Long getE() {
-        return e;
-    }
-
-    public void setE(Long e) {
-        this.e = e;
-    }
-
-    @Field("f")
-    public BigDecimal getF() {
-        return f;
-    }
-
-    public void setF(BigDecimal f) {
-        this.f = f;
-    }
-
-    @Field("g")
-    public EnumType getG() {
-        return g;
-    }
-
-    public void setG(EnumType g) {
-        this.g = g;
-    }
-
-    public static RecordWithAllTypes newRecord(Integer id, Random random) {
-        return new RecordWithAllTypes(
+    public static RecordWithPrimitives newRecord(Integer id, Random random) {
+        return new RecordWithPrimitives(
                 id,
-                UUID.randomUUID().toString(),
                 random.nextInt(),
                 random.nextBoolean(),
-                new Date(),
-                random.nextLong(),
-                BigDecimal.TEN,
-                EnumType.F2
+                random.nextLong()
         );
     }
 
-    public static RecordWithAllTypes newNullRecord(Integer id) {
-        return new RecordWithAllTypes(
+    public static RecordWithPrimitives newNullRecord(Integer id) {
+        return new RecordWithPrimitives(
                 id,
-                null,
-                null,
-                null,
-                null,
-                null,
-                null,
-                null
+                0,
+                false,
+                0l
         );
     }
 
     @Override
     public boolean equals(Object o) {
-        if (o instanceof RecordWithAllTypes) {
-            RecordWithAllTypes that = (RecordWithAllTypes)o;
+        if (this == o) {
+            return true;
+        }
+
+        if (o instanceof RecordWithPrimitives) {
+            RecordWithPrimitives that = (RecordWithPrimitives)o;
 
             return Objects.equals(this.id, that.id)
                     && Objects.equals(this.a, that.a)
                     && Objects.equals(this.b, that.b)
-                    && Objects.equals(this.c, that.c)
-                    && Objects.equals(this.d, that.d)
-                    && Objects.equals(this.e, that.e)
-                    && Objects.equals(this.f, that.f)
-                    && Objects.equals(this.g, that.g);
+                    && Objects.equals(this.c, that.c);
         } else {
             return false;
         }
@@ -181,6 +127,6 @@ public class RecordWithAllTypes implements Record {
 
     @Override
     public int hashCode() {
-        return Objects.hash(a, b, c, d, e, f, g);
+        return Objects.hash(a, b, c);
     }
 }

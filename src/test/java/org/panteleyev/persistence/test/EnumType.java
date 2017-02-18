@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2016, 2017, Petr Panteleyev <petr@panteleyev.org>
+ * Copyright (c) 2017, Petr Panteleyev <petr@panteleyev.org>
  * All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
@@ -22,40 +22,12 @@
  * CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE)
  * ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE
  * POSSIBILITY OF SUCH DAMAGE.
+ *
  */
 package org.panteleyev.persistence.test;
 
-import java.util.Arrays;
-import org.testng.Assert;
-import org.testng.annotations.AfterMethod;
-import org.testng.annotations.BeforeMethod;
-import org.testng.annotations.Test;
-
-public class TestTableCreation extends Base {
-    @BeforeMethod
-    public void setup() throws Exception {
-        super.setupAndSkip();
-    }
-
-    @AfterMethod
-    public void cleanup() throws Exception {
-        super.cleanup();
-    }
-
-    @Test
-    public void testCreateTables() throws Exception {
-        getDao().createTables(Arrays.asList(
-                RecordWithAllTypes.class,
-                RecordWithOptionals.class,
-                RecordWithPrimitives.class,
-                ImmutableRecord.class,
-                ImmutableRecordWithPrimitives.class
-        ));
-
-        Assert.assertTrue(getDao().getAll(RecordWithAllTypes.class).isEmpty());
-        Assert.assertTrue(getDao().getAll(RecordWithOptionals.class).isEmpty());
-        Assert.assertTrue(getDao().getAll(RecordWithPrimitives.class).isEmpty());
-        Assert.assertTrue(getDao().getAll(ImmutableRecord.class).isEmpty());
-        Assert.assertTrue(getDao().getAll(ImmutableRecordWithPrimitives.class).isEmpty());
-    }
+public enum EnumType {
+    F1,
+    F2,
+    F3;
 }
