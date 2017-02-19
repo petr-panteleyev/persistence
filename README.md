@@ -2,10 +2,8 @@
 
 Annotation based wrapper for SQLite.
 
-[Javadoc](http://www.panteleyev.org/javadoc/persistence/)
+[![Maven Central](https://maven-badges.herokuapp.com/maven-central/org.panteleyev/persistence/badge.svg)](https://maven-badges.herokuapp.com/maven-central/org.panteleyev/persistence/)
+[![Javadocs](http://www.javadoc.io/badge/org.panteleyev/persistence.svg)](http://www.javadoc.io/doc/org.panteleyev/persistence)
 
-### Dependency
-
-```
-org.panteleyev:persistence:2.2.0
-```
+### Releases
+https://oss.sonatype.org/content/repositories/releases/org/panteleyev/persistence/
