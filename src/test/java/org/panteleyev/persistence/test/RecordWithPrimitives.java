@@ -53,12 +53,12 @@ public class RecordWithPrimitives implements Record {
 
     @Field(value = Field.ID, primaryKey = true)
     @Override
-    public Integer getId() {
+    public int getId() {
         return id;
     }
 
     @Override
-    public void setId(Integer id) {
+    public void setId(int id) {
         this.id = id;
     }
 

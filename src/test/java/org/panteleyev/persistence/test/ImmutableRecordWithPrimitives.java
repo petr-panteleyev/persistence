@@ -56,7 +56,7 @@ public class ImmutableRecordWithPrimitives implements Record {
 
     @Field(value = Field.ID, primaryKey = true)
     @Override
-    public Integer getId() {
+    public int getId() {
         return id;
     }
 

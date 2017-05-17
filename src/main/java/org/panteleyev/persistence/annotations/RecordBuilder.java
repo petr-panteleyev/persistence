@@ -34,7 +34,25 @@ import java.lang.annotation.Target;
  * Defines constructor used for record retrieval. All parameters of such constructor must be annotated with
  * {@link Field} annotation.
  *
- * @since 2.0
+ * <p>Example:</p>
+ *
+ * <pre><code>
+ *{@literal @}Table("book")
+ * class Book {
+ *     private String title;
+ *
+ *    {@literal @}RecordBuilder
+ *     public Book (@Field("title") String title) {
+ *         this.title = title;
+ *     }
+ *
+ *    {@literal @}Field("title")
+ *     public String getTitle() {
+ *         return title
+ *     }
+ * }
+ * </code></pre>
+ *
  */
 @Retention(RetentionPolicy.RUNTIME)
 @Target(ElementType.CONSTRUCTOR)

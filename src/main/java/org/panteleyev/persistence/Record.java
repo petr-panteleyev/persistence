@@ -31,9 +31,9 @@ package org.panteleyev.persistence;
 public interface Record {
     /**
      * Returns id of the record.
-     * @return id
+     * @return id id of the record
      */
-    Integer getId();
+    int getId();
 
     /**
      * Sets id of the record. Default implementation throws {@link UnsupportedOperationException} to guarantee correct
@@ -41,7 +41,7 @@ public interface Record {
      * Mutable records that use setters must override this method.
      * @param id id of the record
      */
-    default void setId(Integer id) {
+    default void setId(int id) {
         throw new UnsupportedOperationException();
     }
 }

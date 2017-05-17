@@ -194,6 +194,30 @@ public abstract class DAO {
         return result;
     }
 
+    /**
+     * Retrieves all records of the specified type and fills the map.
+     * @param clazz record class
+     * @param <T> type of the record
+     * @param result map to fill
+     */
+    public <T extends Record> void getAll(Class<T> clazz, Map<Integer, T> result) {
+        try (Connection conn = getDataSource().getConnection()) {
+            if (!clazz.isAnnotationPresent(Table.class)) {
+                throw new IllegalStateException(NOT_ANNOTATED);
+            }
+
+            String tableName = clazz.getAnnotation(Table.class).value();
+            PreparedStatement ps = conn.prepareStatement("SELECT * FROM " + tableName);
+            ResultSet set = ps.executeQuery();
+            while (set.next()) {
+                T r = fromSQL(set, clazz);
+                result.put(r.getId(), r);
+            }
+        } catch (SQLException ex) {
+            throw new RuntimeException(ex);
+        }
+    }
+
     protected <T extends Record> T fromSQL(ResultSet set, Class<T> clazz) {
         try {
             // First try to find @RecordBuilder constructor
@@ -240,6 +264,18 @@ public abstract class DAO {
                     break;
                 default:
                     throw new IllegalStateException(BAD_FIELD_TYPE);
+            }
+        } else {
+            switch (typeName) {
+                case TYPE_INT :
+                    value = 0;
+                    break;
+                case TYPE_LONG_PRIM :
+                    value = 0L;
+                    break;
+                case TYPE_BOOL :
+                    value = false;
+                    break;
             }
         }
 

@@ -33,6 +33,24 @@ import java.lang.annotation.Target;
 /**
  * Defines database record field. Must be applied to getters. If Record uses {@link RecordBuilder} annotated constructor
  * its parameters must be annotated by {@link Field} as well.
+ *
+ * <p>Example:</p>
+ *
+ * <pre><code>
+ *{@literal @}Table("book")
+ * class Book {
+ *     private String title;
+ *
+ *    {@literal @}Field("title")
+ *     public String getTitle() {
+ *         return title
+ *     }
+ *
+ *     public void setTitle(String title) {
+ *         this.title = title;
+ *     }
+ * }
+ * </code></pre>
  */
 @Retention(RetentionPolicy.RUNTIME)
 @Target({ ElementType.METHOD, ElementType.PARAMETER })
