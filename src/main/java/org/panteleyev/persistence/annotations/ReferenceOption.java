@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2017, Petr Panteleyev <petr@panteleyev.org>
+ * Copyright (c) 2015, 2017, Petr Panteleyev <petr@panteleyev.org>
  * All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
@@ -25,38 +25,40 @@
  */
 package org.panteleyev.persistence.annotations;
 
-import java.lang.annotation.ElementType;
-import java.lang.annotation.Retention;
-import java.lang.annotation.RetentionPolicy;
-import java.lang.annotation.Target;
-
 /**
- * Defines foreign key.
+ * Foreign key reference option.
+ * @see <a href="https://dev.mysql.com/doc/refman/5.7/en/create-table-foreign-keys.html">MySQL Foreign Keys</a>
  */
-@Retention(RetentionPolicy.RUNTIME)
-@Target(ElementType.METHOD)
-public @interface ForeignKey {
+public enum ReferenceOption {
     /**
-     * Referenced table class. This must be a class annotated by {@link Table}.
-     * @return table class
+     * No action is specified in the ON DELETE or ON UPDATE clause.
      */
-    Class table();
+    NONE,
 
     /**
-     * Referenced field.
-     * @return field name
+     * Rejects the delete or update operation for the parent table.
      */
-    String field() default Field.ID;
+    RESTRICT,
 
     /**
-     * ON DELETE reference option.
-     * @return reference option
+     * Delete or update the row from the parent table, and automatically delete or update the matching rows
+     * in the child table.
      */
-    ReferenceOption onDelete() default ReferenceOption.NONE;
+    CASCADE,
 
     /**
-     * ON UPDATE reference option.
-     * @return reference option
+     * Delete or update the row from the parent table, and set the foreign key column or columns in the
+     * child table to NULL.
      */
-    ReferenceOption onUpdate() default ReferenceOption.NONE;
+    SET_NULL,
+
+    /**
+     * Same as {@link #RESTRICT}
+     */
+    NO_ACTION;
+
+    @Override
+    public String toString() {
+        return name().replaceAll("_", " ");
+    }
 }

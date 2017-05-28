@@ -23,40 +23,21 @@
  * ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE
  * POSSIBILITY OF SUCH DAMAGE.
  */
-package org.panteleyev.persistence.annotations;
+package org.panteleyev.persistence;
 
-import java.lang.annotation.ElementType;
-import java.lang.annotation.Retention;
-import java.lang.annotation.RetentionPolicy;
-import java.lang.annotation.Target;
+interface DAOTypes {
+    String TYPE_BIG_DECIMAL = "java.math.BigDecimal";
+    String TYPE_DATE        = "java.util.Date";
+    String TYPE_LONG        = "java.lang.Long";
+    String TYPE_INTEGER     = "java.lang.Integer";
+    String TYPE_BOOLEAN     = "java.lang.Boolean";
+    String TYPE_STRING      = "java.lang.String";
+    String TYPE_LONG_PRIM   = "long";
+    String TYPE_INT         = "int";
+    String TYPE_BOOL        = "boolean";
 
-/**
- * Defines foreign key.
- */
-@Retention(RetentionPolicy.RUNTIME)
-@Target(ElementType.METHOD)
-public @interface ForeignKey {
-    /**
-     * Referenced table class. This must be a class annotated by {@link Table}.
-     * @return table class
-     */
-    Class table();
+    String TYPE_ENUM        = "*** enum ***";
 
-    /**
-     * Referenced field.
-     * @return field name
-     */
-    String field() default Field.ID;
-
-    /**
-     * ON DELETE reference option.
-     * @return reference option
-     */
-    ReferenceOption onDelete() default ReferenceOption.NONE;
-
-    /**
-     * ON UPDATE reference option.
-     * @return reference option
-     */
-    ReferenceOption onUpdate() default ReferenceOption.NONE;
+    // Exception strings
+    String BAD_FIELD_TYPE   = "Unsupported field type";
 }

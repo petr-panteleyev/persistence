@@ -25,6 +25,12 @@
  */
 package org.panteleyev.persistence;
 
+import org.panteleyev.persistence.annotations.Field;
+import org.panteleyev.persistence.annotations.ForeignKey;
+import org.panteleyev.persistence.annotations.Index;
+import org.panteleyev.persistence.annotations.RecordBuilder;
+import org.panteleyev.persistence.annotations.Table;
+import javax.sql.DataSource;
 import java.beans.BeanInfo;
 import java.beans.IntrospectionException;
 import java.beans.Introspector;
@@ -35,99 +41,88 @@ import java.lang.reflect.InvocationTargetException;
 import java.lang.reflect.Method;
 import java.lang.reflect.ParameterizedType;
 import java.lang.reflect.Type;
-import java.math.BigDecimal;
 import java.sql.Connection;
 import java.sql.PreparedStatement;
 import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.sql.Statement;
-import java.sql.Types;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collection;
-import java.util.Date;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
 import java.util.Optional;
+import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
-import javax.sql.DataSource;
-import org.panteleyev.persistence.annotations.Field;
-import org.panteleyev.persistence.annotations.ForeignKey;
-import org.panteleyev.persistence.annotations.RecordBuilder;
-import org.panteleyev.persistence.annotations.Table;
-import org.sqlite.SQLiteDataSource;
+import java.util.stream.Collectors;
+import static org.panteleyev.persistence.DAOTypes.BAD_FIELD_TYPE;
+import static org.panteleyev.persistence.DAOTypes.TYPE_ENUM;
 
 /**
  * Persistence API entry point.
  */
-public abstract class DAO {
-    private static final String TYPE_BIG_DECIMAL = "java.math.BigDecimal";
-    private static final String TYPE_DATE        = "java.util.Date";
-    private static final String TYPE_LONG        = "java.lang.Long";
-    private static final String TYPE_INTEGER     = "java.lang.Integer";
-    private static final String TYPE_BOOLEAN     = "java.lang.Boolean";
-    private static final String TYPE_STRING      = "java.lang.String";
-    private static final String TYPE_LONG_PRIM   = "long";
-    private static final String TYPE_INT         = "int";
-    private static final String TYPE_BOOL        = "boolean";
-
-    private static final String TYPE_ENUM        = "*** enum ***";
-
-    private static final String BAD_FIELD_TYPE   = "Unsupported field type";
+public class DAO {
     private static final String NOT_ANNOTATED    = "Class is not properly annotated";
-
-    public static class Builder {
-        private String fileName;
-
-        public Builder() {
-        }
-
-        public Builder file(String fileName) {
-            this.fileName = fileName;
-            return this;
-        }
-
-        public DataSource build() {
-            Objects.requireNonNull(fileName);
-
-            SQLiteDataSource ds = new SQLiteDataSource();
-            ds.setUrl("jdbc:sqlite:" + fileName);
-            ds.setEncoding("UTF-8");
-
-            return ds;
-        }
-    }
 
     private final Map<Class<? extends Record>, Integer> primaryKeys = new ConcurrentHashMap<>();
     private final Map<Class<? extends Record>, String> insertSQL = new ConcurrentHashMap<>();
     private final Map<Class<? extends Record>, String> updateSQL = new ConcurrentHashMap<>();
     private final Map<Class<? extends Record>, String> deleteSQL = new ConcurrentHashMap<>();
 
-    // Listeners
-    private final Map<Class<? extends Record>, List<TableListener>> tableListeners = new ConcurrentHashMap<>();
-
     private DataSource datasource;
 
-    protected DAO() {
+    private DAOProxy proxy;
+
+    public DAO() {
     }
 
-    protected DAO(DataSource ds) {
+    public DAO(DataSource ds) {
         this.datasource = ds;
+        proxy = setupProxy();
     }
 
-    protected DataSource getDataSource() {
+    /**
+     * Return current data source object.
+     * @return data source object
+     */
+    public DataSource getDataSource() {
         return datasource;
     }
 
-    protected void setDatasource(DataSource ds) {
+    /**
+     * Sets a new data source.
+     * @param ds data source
+     */
+    public void setDataSource(DataSource ds) {
         this.datasource = ds;
         primaryKeys.clear();
         insertSQL.clear();
         deleteSQL.clear();
-        tableListeners.clear();
+        proxy = setupProxy();
     }
 
+    private DAOProxy setupProxy() {
+        // TODO: figure out better way instead of class name check
+        String dsClass = datasource.getClass().getName().toLowerCase();
+
+        if (dsClass.contains("mysql")) {
+            return new MySQLProxy();
+        }
+
+        if (dsClass.contains("sqlite")) {
+            return new SQLiteProxy();
+        }
+
+        throw new IllegalStateException("Unsupported database type");
+    }
+
+    /**
+     * Returns connection for the current data source.
+     * @return connection
+     * @throws SQLException in case of SQL error
+     */
     public Connection getConnection() throws SQLException {
         return getDataSource().getConnection();
     }
@@ -218,7 +213,7 @@ public abstract class DAO {
         }
     }
 
-    protected <T extends Record> T fromSQL(ResultSet set, Class<T> clazz) {
+    private <T extends Record> T fromSQL(ResultSet set, Class<T> clazz) {
         try {
             // First try to find @RecordBuilder constructor
             for (Constructor constructor : clazz.getConstructors()) {
@@ -235,53 +230,6 @@ public abstract class DAO {
         }
     }
 
-    private Object getFieldValue(String fieldName, Class typeClass, ResultSet set) throws SQLException {
-        Object value = set.getObject(fieldName);
-
-        String typeName = typeClass.isEnum()? TYPE_ENUM : typeClass.getName();
-
-        if (value != null) {
-            switch (typeName) {
-                case TYPE_STRING :
-                case TYPE_INTEGER :
-                case TYPE_INT :
-                case TYPE_LONG :
-                case TYPE_LONG_PRIM :
-                    // do nothing
-                    break;
-                case TYPE_BOOL :
-                case TYPE_BOOLEAN :
-                    value = (int)value != 0;
-                    break;
-                case TYPE_BIG_DECIMAL :
-                    value = set.getBigDecimal(fieldName);
-                    break;
-                case TYPE_DATE :
-                    value = new Date(set.getLong(fieldName));
-                    break;
-                case TYPE_ENUM :
-                    value = Enum.valueOf(typeClass, (String)value);
-                    break;
-                default:
-                    throw new IllegalStateException(BAD_FIELD_TYPE);
-            }
-        } else {
-            switch (typeName) {
-                case TYPE_INT :
-                    value = 0;
-                    break;
-                case TYPE_LONG_PRIM :
-                    value = 0L;
-                    break;
-                case TYPE_BOOL :
-                    value = false;
-                    break;
-            }
-        }
-
-        return value;
-    }
-
     private <T extends Record> T fromSQL(ResultSet set, Constructor<?> constructor) throws SQLException, IllegalAccessException, InvocationTargetException, InstantiationException {
         int paramCount = constructor.getParameterCount();
 
@@ -296,7 +244,7 @@ public abstract class DAO {
                     .map(a -> ((Field)a).value())
                     .orElseThrow(RuntimeException::new);
 
-            params[i] = getFieldValue(fieldName, paramTypes[i], set);
+            params[i] = proxy.getFieldValue(fieldName, paramTypes[i], set);
         }
 
         return (T)constructor.newInstance(params);
@@ -326,7 +274,7 @@ public abstract class DAO {
                 if (setter != null) {
                     Field fld = getter.getAnnotation(Field.class);
                     if (fld != null) {
-                        setter.invoke(record, getFieldValue(fld.value(), getterClass, set));
+                        setter.invoke(record, proxy.getFieldValue(fld.value(), getterClass, set));
                     }
                 }
             }
@@ -383,6 +331,10 @@ public abstract class DAO {
                     BeanInfo bi = Introspector.getBeanInfo(cl);
                     PropertyDescriptor[] pds = bi.getPropertyDescriptors();
 
+                    List<String> constraints = new ArrayList<>();
+
+                    Set<Method> indexed = new HashSet<>();
+
                     boolean first = true;
                     for (PropertyDescriptor pd : pds) {
                         Method getter = pd.getReadMethod();
@@ -399,71 +351,31 @@ public abstract class DAO {
                             }
                             first = false;
 
-                            b.append(fName).append(" ");
+                            b.append(fName)
+                                    .append(" ")
+                                    .append(proxy.getColumnString(fld,
+                                            getter.getAnnotation(ForeignKey.class), typeName, constraints));
 
-                            switch (typeName) {
-                                case TYPE_STRING:
-                                case TYPE_ENUM:
-                                    b.append("VARCHAR(")
-                                        .append(fld.length())
-                                        .append(")");
-                                    break;
-                                case TYPE_BOOL :
-                                case TYPE_BOOLEAN :
-                                    b.append("BOOLEAN");
-                                    break;
-                                case TYPE_INTEGER :
-                                case TYPE_INT :
-                                case TYPE_LONG :
-                                case TYPE_LONG_PRIM :
-                                case TYPE_DATE :
-                                    b.append("INTEGER");
-                                    break;
-                                case TYPE_BIG_DECIMAL :
-                                    b.append("VARCHAR(")
-                                        .append(fld.precision() + 1)
-                                        .append(")");
-                                    break;
-                                default:
-                                    throw new IllegalStateException(BAD_FIELD_TYPE);
-                            }
-
-                            if (fld.primaryKey()) {
-                                b.append(" PRIMARY KEY");
-                            }
-
-                            if (!fld.nullable()) {
-                                b.append(" NOT NULL");
-                            }
-
-                            if (getter.isAnnotationPresent(ForeignKey.class)) {
-                                ForeignKey foreignKey = getter.getAnnotation(ForeignKey.class);
-                                Class<?> parentTableClass = foreignKey.table();
-                                if (!parentTableClass.isAnnotationPresent(Table.class)) {
-                                    throw new IllegalStateException("Foreign key references not annotated table");
-                                }
-
-                                String parentTableName = parentTableClass.getAnnotation(Table.class).value();
-                                String parentFieldName = foreignKey.field();
-
-                                b.append(" ")
-//                                        .append(fName)
-                                        .append("REFERENCES ")
-                                        .append(parentTableName)
-                                        .append("(")
-                                        .append(parentFieldName)
-                                        .append(")")
-                                        .append(" ON UPDATE ")
-                                        .append(foreignKey.onUpdate().toString())
-                                        .append(" ON DELETE ")
-                                        .append(foreignKey.onDelete().toString());
+                            if (getter.isAnnotationPresent(Index.class)) {
+                                indexed.add(getter);
                             }
                         }
+                    }
+
+                    if (!constraints.isEmpty()) {
+                        b.append(",");
+                        b.append(constraints.stream().collect(Collectors.joining(",")));
                     }
 
                     b.append(")");
 
                     st.executeUpdate(b.toString());
+
+                    // Create indexes
+                    for (Method getter : indexed) {
+                        st.executeUpdate(proxy.buildIndex(table, getter));
+                    }
+
                 } catch (IntrospectionException ex) {
                     throw new RuntimeException(ex);
                 }
@@ -646,63 +558,7 @@ public abstract class DAO {
                     }
 
                     String typeName = getterClass.isEnum()? TYPE_ENUM : getterClass.getName();
-
-                    switch (typeName) {
-                        case TYPE_STRING :
-                            if (value == null) {
-                                st.setNull(index++, Types.VARCHAR);
-                            } else {
-                                st.setString(index++, (String)value);
-                            }
-                            break;
-                        case TYPE_BOOL :
-                        case TYPE_BOOLEAN :
-                            if (value == null) {
-                                st.setNull(index++, Types.BOOLEAN);
-                            } else {
-                                st.setBoolean(index++, (Boolean)value);
-                            }
-                            break;
-                        case TYPE_INTEGER :
-                        case TYPE_INT :
-                            if (value == null) {
-                                st.setNull(index++, Types.INTEGER);
-                            } else {
-                                st.setInt(index++, (Integer)value);
-                            }
-                            break;
-                        case TYPE_LONG :
-                        case TYPE_LONG_PRIM :
-                            if (value == null) {
-                                st.setNull(index++, Types.INTEGER);
-                            } else {
-                                st.setLong(index++, (Long)value);
-                            }
-                            break;
-                        case TYPE_DATE :
-                            if (value == null) {
-                                st.setNull(index++, Types.INTEGER);
-                            } else {
-                                st.setLong(index++, ((Date)value).getTime());
-                            }
-                            break;
-                        case TYPE_BIG_DECIMAL :
-                            if (value == null) {
-                                st.setNull(index++, Types.DECIMAL);
-                            } else {
-                                st.setBigDecimal(index++, (BigDecimal)value);
-                            }
-                            break;
-                        case TYPE_ENUM:
-                            if (value == null) {
-                                st.setNull(index++, Types.VARCHAR);
-                            } else {
-                                st.setString(index++, ((Enum)value).name());
-                            }
-                            break;
-                        default:
-                            throw new IllegalStateException(BAD_FIELD_TYPE);
-                    }
+                    proxy.setFieldData(st, index++, value, typeName);
                 }
             }
 
@@ -714,20 +570,20 @@ public abstract class DAO {
         }
     }
 
-    protected PreparedStatement getPreparedStatement(Record record, Connection conn, boolean update) throws SQLException {
+    private PreparedStatement getPreparedStatement(Record record, Connection conn, boolean update) throws SQLException {
         String sql = (update)? getUpdateSQL(record) : getInsertSQL(record);
         PreparedStatement st = conn.prepareStatement(sql);
         setData(record, st, update);
         return st;
     }
 
-    protected PreparedStatement getDeleteStatement(Record record, Connection conn) throws SQLException {
+    private PreparedStatement getDeleteStatement(Record record, Connection conn) throws SQLException {
         PreparedStatement st = conn.prepareStatement(getDeleteSQL(record));
         st.setInt(1, record.getId());
         return st;
     }
 
-    protected PreparedStatement getDeleteStatement(Integer id, Class<? extends Record> clazz, Connection conn) throws SQLException {
+    private PreparedStatement getDeleteStatement(Integer id, Class<? extends Record> clazz, Connection conn) throws SQLException {
         PreparedStatement st = conn.prepareStatement(getDeleteSQL(clazz));
         st.setInt(1, id);
         return st;
@@ -786,9 +642,6 @@ public abstract class DAO {
              PreparedStatement ps = getPreparedStatement(record, conn, false)) {
             ps.executeUpdate();
 
-            // Call listeners
-            getListeners(record.getClass()).forEach(l -> l.recordAdded(record));
-
             return get(record.getId(), (Class<T>)record.getClass());
         } catch (SQLException ex) {
             throw new RuntimeException(ex);
@@ -809,9 +662,6 @@ public abstract class DAO {
                 PreparedStatement ps = getPreparedStatement(record, conn, true)) {
             ps.executeUpdate();
 
-            // Call listeners
-            getListeners(record.getClass()).forEach(l -> l.recordUpdated(record));
-
             return get(record.getId(), (Class<T>)record.getClass());
         } catch (SQLException ex) {
             throw new RuntimeException(ex);
@@ -825,7 +675,6 @@ public abstract class DAO {
     public void delete(Record record) {
         try (Connection conn = getDataSource().getConnection(); PreparedStatement ps = getDeleteStatement(record, conn)) {
             ps.executeUpdate();
-            getListeners(record.getClass()).forEach(l -> l.recordDeleted(record));
         } catch (SQLException ex) {
             throw new RuntimeException(ex);
         }
@@ -842,27 +691,5 @@ public abstract class DAO {
         } catch (SQLException ex) {
             throw new RuntimeException(ex);
         }
-    }
-
-    /**
-     * Adds table change listener.
-     * @param clazz record type
-     * @param listener listener
-     */
-    public void addListener(Class<? extends Record> clazz, TableListener listener) {
-        getListeners(clazz).add(listener);
-    }
-
-    /**
-     * Removes table change listener.
-     * @param clazz record type
-     * @param listener listener
-     */
-    public void removeListener(Class<? extends Record> clazz, TableListener listener) {
-        getListeners(clazz).remove(listener);
-    }
-
-    private List<TableListener> getListeners(Class<? extends Record> clazz) {
-        return tableListeners.computeIfAbsent(clazz, cl -> new ArrayList<>());
     }
 }

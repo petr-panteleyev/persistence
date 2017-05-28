@@ -22,9 +22,8 @@
  * CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE)
  * ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE
  * POSSIBILITY OF SUCH DAMAGE.
- *
  */
-package org.panteleyev.persistence.test;
+package org.panteleyev.persistence.test.model;
 
 import org.panteleyev.persistence.Record;
 import org.panteleyev.persistence.annotations.Field;
@@ -42,7 +41,7 @@ public class ImmutableRecordWithPrimitives implements Record {
     private final long c;
 
     @RecordBuilder
-    public ImmutableRecordWithPrimitives(
+    public  ImmutableRecordWithPrimitives(
             @Field("id") Integer id,
             @Field("a") int a,
             @Field("b") boolean b,
@@ -89,7 +88,7 @@ public class ImmutableRecordWithPrimitives implements Record {
                 id,
                 0,
                 false,
-                0l
+                0L
         );
     }
 

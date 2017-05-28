@@ -25,39 +25,101 @@
  */
 package org.panteleyev.persistence.test;
 
-import java.io.File;
-import java.lang.reflect.Method;
-import java.util.Random;
-import javax.sql.DataSource;
+import com.mysql.jdbc.jdbc2.optional.MysqlDataSource;
 import org.panteleyev.persistence.DAO;
 import org.panteleyev.persistence.Record;
+import org.panteleyev.persistence.test.model.ImmutableRecord;
+import org.panteleyev.persistence.test.model.ImmutableRecordWithPrimitives;
+import org.panteleyev.persistence.test.model.RecordWithAllTypes;
+import org.panteleyev.persistence.test.model.RecordWithOptionals;
+import org.panteleyev.persistence.test.model.RecordWithPrimitives;
+import org.testng.SkipException;
 import org.testng.annotations.DataProvider;
+import javax.sql.DataSource;
+import java.io.File;
+import java.io.IOException;
+import java.lang.reflect.Method;
+import java.math.BigDecimal;
+import java.sql.Connection;
+import java.sql.SQLException;
+import java.sql.Statement;
+import java.util.Objects;
+import java.util.Random;
 
-class Base {
-    private static final Random RANDOM = new Random(System.currentTimeMillis());
-
-    private File TEST_DB_FILE;
+public class Base {
+    static final Random RANDOM = new Random(System.currentTimeMillis());
 
     private DAO dao;
 
-    public void setupAndSkip() throws Exception {
-        TEST_DB_FILE = File.createTempFile("persistence", "db");
+    private DataSource dataSource;
 
-        DataSource ds = new DAO.Builder()
-            .file(TEST_DB_FILE.getAbsolutePath())
-            .build();
+    // MySQL
+    private static String TEST_DB_NAME = "TestDB";
 
-        dao = new DAOImpl(ds);
-    }
+    // SQLite
+    private File TEST_DB_FILE;
 
-    public void cleanup() throws Exception {
-        if (TEST_DB_FILE != null && TEST_DB_FILE.exists()) {
-            TEST_DB_FILE.delete();
-        }
+    void setDao(DAO dao) {
+        this.dao = dao;
     }
 
     public DAO getDao() {
         return dao;
+    }
+
+    void setupMySQL() {
+        String dbName = System.getProperty("mysql.database", TEST_DB_NAME);
+        String host = System.getProperty("mysql.host", "localhost");
+        String user = System.getProperty("mysql.user");
+        String password = System.getProperty("mysql.password");
+
+        if (user == null || password == null) {
+            throw new SkipException("Test config is not set");
+        }
+
+        dataSource = new MySQLBuilder()
+                .host(host)
+                .user(user)
+                .password(password)
+                .build();
+
+        try (Connection conn = dataSource.getConnection()) {
+            Statement st = conn.createStatement();
+            st.execute("CREATE DATABASE " + dbName);
+            ((MysqlDataSource)dataSource).setDatabaseName(dbName);
+            DAO dao = new DAO(dataSource);
+            setDao(dao);
+        } catch (SQLException ex) {
+            throw new SkipException("Unable to create database", ex);
+        }
+    }
+
+    void cleanupMySQL() throws Exception {
+        try (Connection conn = dataSource.getConnection()) {
+            Statement st = conn.createStatement();
+            st.execute("DROP DATABASE " + TEST_DB_NAME);
+        }
+    }
+
+    void setupSQLite() {
+        try {
+            TEST_DB_FILE = File.createTempFile("persistence", "db");
+
+            DataSource ds = new SQLiteBuilder()
+                    .file(TEST_DB_FILE.getAbsolutePath())
+                    .build();
+
+            DAO dao = new DAO(ds);
+            setDao(dao);
+        } catch (IOException ex) {
+            throw new SkipException("Unable to create temporary file", ex);
+        }
+    }
+
+    void cleanupSQLite() {
+        if (TEST_DB_FILE != null && TEST_DB_FILE.exists()) {
+            TEST_DB_FILE.delete();
+        }
     }
 
     @DataProvider(name = "recordClasses")
@@ -85,6 +147,11 @@ class Base {
         Integer id = dao.generatePrimaryKey(clazz);
         Method method = clazz.getDeclaredMethod("newNullRecord", Integer.class);
         return (T)method.invoke(null, id);
+    }
+
+    public static boolean compareBigDecimals(BigDecimal x, BigDecimal y) {
+        return Objects.equals(x, y)
+            || (x != null && x.compareTo(y) == 0);
     }
 }
 

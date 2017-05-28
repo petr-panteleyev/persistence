@@ -31,32 +31,21 @@ import java.lang.annotation.RetentionPolicy;
 import java.lang.annotation.Target;
 
 /**
- * Defines foreign key.
+ * Defines index for the table field.
  */
+
 @Retention(RetentionPolicy.RUNTIME)
 @Target(ElementType.METHOD)
-public @interface ForeignKey {
+public @interface Index {
     /**
-     * Referenced table class. This must be a class annotated by {@link Table}.
-     * @return table class
+     * Name of the index.
+     * @return name of the index
      */
-    Class table();
+    String value();
 
     /**
-     * Referenced field.
-     * @return field name
+     * Specifies whether this index must be unique.
+     * @return unique
      */
-    String field() default Field.ID;
-
-    /**
-     * ON DELETE reference option.
-     * @return reference option
-     */
-    ReferenceOption onDelete() default ReferenceOption.NONE;
-
-    /**
-     * ON UPDATE reference option.
-     * @return reference option
-     */
-    ReferenceOption onUpdate() default ReferenceOption.NONE;
+    boolean unique() default false;
 }

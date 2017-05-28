@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2015, 2017, Petr Panteleyev <petr@panteleyev.org>
+ * Copyright (c) 2017, Petr Panteleyev <petr@panteleyev.org>
  * All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
@@ -23,19 +23,38 @@
  * ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE
  * POSSIBILITY OF SUCH DAMAGE.
  */
-package org.panteleyev.persistence.annotations;
+package org.panteleyev.persistence.test.model;
 
-/**
- * Foreign key reference type.
- */
-public enum ReferenceType {
-    RESTRICT,
-    CASCADE,
-    SET_NULL,
-    NO_ACTION;
+import org.panteleyev.persistence.Record;
+import org.panteleyev.persistence.annotations.Field;
+import org.panteleyev.persistence.annotations.Index;
+import org.panteleyev.persistence.annotations.RecordBuilder;
+import org.panteleyev.persistence.annotations.Table;
 
+@Table("parent_table")
+public class ParentTable implements Record {
+    private int id;
+    private String value;
+
+    @RecordBuilder
+    public ParentTable(@Field("id") int id, @Field("value") String value) {
+        this.id = id;
+        this.value = value;
+    }
+
+    @Field(value = Field.ID, primaryKey = true)
     @Override
-    public String toString() {
-        return name().replaceAll("_", " ");
+    public int getId() {
+        return id;
+    }
+
+    @Field("value")
+    @Index(value = "value", unique = true)
+    public String getValue() {
+        return value;
+    }
+
+    public void setValue(String value) {
+        this.value = value;
     }
 }

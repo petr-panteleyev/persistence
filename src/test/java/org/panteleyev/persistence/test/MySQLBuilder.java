@@ -23,40 +23,51 @@
  * ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE
  * POSSIBILITY OF SUCH DAMAGE.
  */
-package org.panteleyev.persistence.annotations;
 
-import java.lang.annotation.ElementType;
-import java.lang.annotation.Retention;
-import java.lang.annotation.RetentionPolicy;
-import java.lang.annotation.Target;
+package org.panteleyev.persistence.test;
 
-/**
- * Defines foreign key.
- */
-@Retention(RetentionPolicy.RUNTIME)
-@Target(ElementType.METHOD)
-public @interface ForeignKey {
-    /**
-     * Referenced table class. This must be a class annotated by {@link Table}.
-     * @return table class
-     */
-    Class table();
+import com.mysql.jdbc.jdbc2.optional.MysqlDataSource;
+import javax.sql.DataSource;
 
-    /**
-     * Referenced field.
-     * @return field name
-     */
-    String field() default Field.ID;
+class MySQLBuilder {
+    private String host;
+    private int port = 3306;
+    private String dbName;
+    private String user;
+    private String password;
 
-    /**
-     * ON DELETE reference option.
-     * @return reference option
-     */
-    ReferenceOption onDelete() default ReferenceOption.NONE;
+    DataSource build() {
+        MysqlDataSource ds = new MysqlDataSource();
+        ds.setDatabaseName(dbName);
+        ds.setPort(port);
+        ds.setServerName(host);
+        ds.setUser(user);
+        ds.setPassword(password);
+        return ds;
+    }
 
-    /**
-     * ON UPDATE reference option.
-     * @return reference option
-     */
-    ReferenceOption onUpdate() default ReferenceOption.NONE;
+    MySQLBuilder host(String host) {
+        this.host = host;
+        return this;
+    }
+
+    MySQLBuilder port(int port) {
+        this.port = port;
+        return this;
+    }
+
+    MySQLBuilder name(String name) {
+        this.dbName = name;
+        return this;
+    }
+
+    MySQLBuilder user(String user) {
+        this.user = user;
+        return this;
+    }
+
+    MySQLBuilder password(String password) {
+        this.password = password;
+        return this;
+    }
 }

@@ -3,10 +3,10 @@
     <modelVersion>4.0.0</modelVersion>
     <groupId>org.panteleyev</groupId>
     <artifactId>persistence</artifactId>
-    <version>2.2.1</version>
+    <version>3.0.0</version>
     <packaging>jar</packaging>
     <name>${project.groupId}:${project.artifactId}</name>
-    <description>Annotation wrapper for SQLite database.</description>
+    <description>Annotation wrapper for SQLite and MySQL database.</description>
     <url>https://github.com/petr-panteleyev/java-persistence</url>
     <licenses>
         <license>
@@ -38,6 +38,13 @@
             <groupId>org.xerial</groupId>
             <artifactId>sqlite-jdbc</artifactId>
             <version>3.15.1</version>
+            <scope>test</scope>
+        </dependency>
+        <dependency>
+            <groupId>mysql</groupId>
+            <artifactId>mysql-connector-java</artifactId>
+            <version>5.1.42</version>
+            <scope>test</scope>
         </dependency>
     </dependencies>
     <build>
@@ -62,6 +69,7 @@
                 <configuration>
                     <notimestamp>true</notimestamp>
                     <author>false</author>
+                    <overview>docs/overview.html</overview>
                     <bottom><![CDATA[Copyright &copy; 2017, Petr Panteleyev]]></bottom>
                 </configuration>
                 <executions>

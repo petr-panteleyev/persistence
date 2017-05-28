@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2016, 2017, Petr Panteleyev <petr@panteleyev.org>
+ * Copyright (c) 2017, Petr Panteleyev <petr@panteleyev.org>
  * All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
@@ -25,12 +25,20 @@
  */
 package org.panteleyev.persistence.test;
 
-import javax.sql.DataSource;
-import org.panteleyev.persistence.DAO;
+import org.testng.annotations.AfterMethod;
+import org.testng.annotations.BeforeMethod;
+import org.testng.annotations.Test;
 
-class DAOImpl extends DAO {
+@Test(groups = "mysql")
+public class TestRecordsMySQL extends RecordsTestBase {
 
-    DAOImpl(DataSource ds) {
-        super(ds);
+    @BeforeMethod
+    public void setup() throws Exception {
+        setupMySQL();
+    }
+
+    @AfterMethod
+    public void cleanup() throws Exception {
+        cleanupMySQL();
     }
 }

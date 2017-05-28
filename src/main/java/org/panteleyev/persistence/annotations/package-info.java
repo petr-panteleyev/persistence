@@ -26,8 +26,5 @@
 
 /**
  * This package defines annotations applied to Java classes implementing database table records.
- *
- * @since 1.0
- * @version 2.0
  */
 package org.panteleyev.persistence.annotations;

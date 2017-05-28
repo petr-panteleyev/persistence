@@ -23,21 +23,21 @@
  * ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE
  * POSSIBILITY OF SUCH DAMAGE.
  */
-
-package org.panteleyev.persistence.test;
+package org.panteleyev.persistence.test.model;
 
 import java.math.BigDecimal;
 import java.util.Date;
 import java.util.Objects;
-import java.util.Optional;
 import java.util.Random;
 import java.util.UUID;
 import org.panteleyev.persistence.Record;
 import org.panteleyev.persistence.annotations.Field;
 import org.panteleyev.persistence.annotations.Table;
+import org.panteleyev.persistence.test.Base;
+import org.panteleyev.persistence.test.EnumType;
 
-@Table("optionals_table")
-public class RecordWithOptionals implements Record {
+@Table("all_types_table")
+public class RecordWithAllTypes implements Record {
     private Integer id;
 
     // fields
@@ -49,10 +49,10 @@ public class RecordWithOptionals implements Record {
     private BigDecimal f;
     private EnumType g;
 
-    public RecordWithOptionals() {
+    public RecordWithAllTypes() {
     }
 
-    public RecordWithOptionals(Integer id, String a, Integer b, Boolean c, Date d, Long e, BigDecimal f, EnumType g) {
+    public RecordWithAllTypes(Integer id, String a, Integer b, Boolean c, Date d, Long e, BigDecimal f, EnumType g) {
         this.id = id;
         this.a = a;
         this.b = b;
@@ -75,8 +75,8 @@ public class RecordWithOptionals implements Record {
     }
 
     @Field("a")
-    public Optional<String> getA() {
-        return Optional.ofNullable(a);
+    public String getA() {
+        return a;
     }
 
     public void setA(String a) {
@@ -84,8 +84,8 @@ public class RecordWithOptionals implements Record {
     }
 
     @Field("b")
-    public Optional<Integer> getB() {
-        return Optional.ofNullable(b);
+    public Integer getB() {
+        return b;
     }
 
     public void setB(Integer b) {
@@ -93,8 +93,8 @@ public class RecordWithOptionals implements Record {
     }
 
     @Field("c")
-    public Optional<Boolean> getC() {
-        return Optional.ofNullable(c);
+    public Boolean getC() {
+        return c;
     }
 
     public void setC(Boolean c) {
@@ -102,8 +102,8 @@ public class RecordWithOptionals implements Record {
     }
 
     @Field("d")
-    public Optional<Date> getD() {
-        return Optional.ofNullable(d);
+    public Date getD() {
+        return d;
     }
 
     public void setD(Date d) {
@@ -111,8 +111,8 @@ public class RecordWithOptionals implements Record {
     }
 
     @Field("e")
-    public Optional<Long> getE() {
-        return Optional.ofNullable(e);
+    public Long getE() {
+        return e;
     }
 
     public void setE(Long e) {
@@ -120,8 +120,8 @@ public class RecordWithOptionals implements Record {
     }
 
     @Field("f")
-    public Optional<BigDecimal> getF() {
-        return Optional.ofNullable(f);
+    public BigDecimal getF() {
+        return f;
     }
 
     public void setF(BigDecimal f) {
@@ -129,17 +129,16 @@ public class RecordWithOptionals implements Record {
     }
 
     @Field("g")
-    public Optional<EnumType> getG() {
-        return Optional.ofNullable(g);
+    public EnumType getG() {
+        return g;
     }
 
     public void setG(EnumType g) {
         this.g = g;
     }
 
-
-    public static RecordWithOptionals newRecord(Integer id, Random random) {
-        return new RecordWithOptionals(
+    public static RecordWithAllTypes newRecord(Integer id, Random random) {
+        return new RecordWithAllTypes(
                 id,
                 UUID.randomUUID().toString(),
                 random.nextInt(),
@@ -147,12 +146,12 @@ public class RecordWithOptionals implements Record {
                 new Date(),
                 random.nextLong(),
                 BigDecimal.TEN,
-                EnumType.F3
+                EnumType.F2
         );
     }
 
-    public static RecordWithOptionals newNullRecord(Integer id) {
-        return new RecordWithOptionals(
+    public static RecordWithAllTypes newNullRecord(Integer id) {
+        return new RecordWithAllTypes(
                 id,
                 null,
                 null,
@@ -166,8 +165,8 @@ public class RecordWithOptionals implements Record {
 
     @Override
     public boolean equals(Object o) {
-        if (o instanceof RecordWithOptionals) {
-            RecordWithOptionals that = (RecordWithOptionals)o;
+        if (o instanceof RecordWithAllTypes) {
+            RecordWithAllTypes that = (RecordWithAllTypes)o;
 
             return Objects.equals(this.id, that.id)
                     && Objects.equals(this.a, that.a)
@@ -175,7 +174,7 @@ public class RecordWithOptionals implements Record {
                     && Objects.equals(this.c, that.c)
                     && Objects.equals(this.d, that.d)
                     && Objects.equals(this.e, that.e)
-                    && Objects.equals(this.f, that.f)
+                    && Base.compareBigDecimals(this.f, that.f)
                     && Objects.equals(this.g, that.g);
         } else {
             return false;

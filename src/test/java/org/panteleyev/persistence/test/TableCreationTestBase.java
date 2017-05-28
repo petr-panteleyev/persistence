@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2017, Petr Panteleyev <petr@panteleyev.org>
+ * Copyright (c) 2016, 2017, Petr Panteleyev <petr@panteleyev.org>
  * All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
@@ -23,40 +23,32 @@
  * ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE
  * POSSIBILITY OF SUCH DAMAGE.
  */
-package org.panteleyev.persistence.annotations;
+package org.panteleyev.persistence.test;
 
-import java.lang.annotation.ElementType;
-import java.lang.annotation.Retention;
-import java.lang.annotation.RetentionPolicy;
-import java.lang.annotation.Target;
+import org.panteleyev.persistence.test.model.ImmutableRecord;
+import org.panteleyev.persistence.test.model.ImmutableRecordWithPrimitives;
+import org.panteleyev.persistence.test.model.RecordWithAllTypes;
+import org.panteleyev.persistence.test.model.RecordWithOptionals;
+import org.panteleyev.persistence.test.model.RecordWithPrimitives;
+import org.testng.Assert;
+import org.testng.annotations.Test;
+import java.util.Arrays;
 
-/**
- * Defines foreign key.
- */
-@Retention(RetentionPolicy.RUNTIME)
-@Target(ElementType.METHOD)
-public @interface ForeignKey {
-    /**
-     * Referenced table class. This must be a class annotated by {@link Table}.
-     * @return table class
-     */
-    Class table();
+class TableCreationTestBase extends Base {
+    @Test
+    public void testCreateTables() throws Exception {
+        getDao().createTables(Arrays.asList(
+                RecordWithAllTypes.class,
+                RecordWithOptionals.class,
+                RecordWithPrimitives.class,
+                ImmutableRecord.class,
+                ImmutableRecordWithPrimitives.class
+        ));
 
-    /**
-     * Referenced field.
-     * @return field name
-     */
-    String field() default Field.ID;
-
-    /**
-     * ON DELETE reference option.
-     * @return reference option
-     */
-    ReferenceOption onDelete() default ReferenceOption.NONE;
-
-    /**
-     * ON UPDATE reference option.
-     * @return reference option
-     */
-    ReferenceOption onUpdate() default ReferenceOption.NONE;
+        Assert.assertTrue(getDao().getAll(RecordWithAllTypes.class).isEmpty());
+        Assert.assertTrue(getDao().getAll(RecordWithOptionals.class).isEmpty());
+        Assert.assertTrue(getDao().getAll(RecordWithPrimitives.class).isEmpty());
+        Assert.assertTrue(getDao().getAll(ImmutableRecord.class).isEmpty());
+        Assert.assertTrue(getDao().getAll(ImmutableRecordWithPrimitives.class).isEmpty());
+    }
 }
