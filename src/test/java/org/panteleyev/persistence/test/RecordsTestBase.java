@@ -30,7 +30,9 @@ import org.panteleyev.persistence.test.model.RecordWithAllTypes;
 import org.panteleyev.persistence.test.model.RecordWithOptionals;
 import org.panteleyev.persistence.test.model.RecordWithPrimitives;
 import org.testng.Assert;
+import org.testng.annotations.DataProvider;
 import org.testng.annotations.Test;
+import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
 import java.util.HashMap;
@@ -208,6 +210,37 @@ class RecordsTestBase extends Base {
 
         Record retrievedMin = getDao().get(rMin.getId(), clazz);
         Assert.assertEquals(retrievedMin, rMin);
+    }
+
+    @DataProvider(name = "testBatchInsert")
+    public Object[][] testBatchInsertDataProvider() {
+        return new Object[][] {
+                { 100, 7 },
+                { 100, 10 }
+        };
+    }
+
+    @Test(dataProvider = "testBatchInsert")
+    public void testBatchInsert(int count, int batchSize) throws Exception {
+        Class<RecordWithPrimitives> clazz = RecordWithPrimitives.class;
+
+        getDao().createTables(Collections.singletonList(clazz));
+        getDao().preload(Collections.singletonList(clazz));
+
+        // Create records
+        List<RecordWithPrimitives> records = new ArrayList<>(count);
+        for (int i = 0; i < count; i++) {
+            records.add(RecordWithPrimitives.newRecord(getDao().generatePrimaryKey(clazz), RANDOM));
+        }
+
+        // Insert records
+        getDao().insert(batchSize, records);
+
+        // Retrieve records
+        List<RecordWithPrimitives> retrieved = getDao().getAll(clazz);
+
+        // Size must be the same
+        Assert.assertEquals(retrieved.size(), records.size());
     }
 
     private <T extends Record> void checkCreatedRecord(Class<T> clazz, Map<Integer, Record> idMap, int count) {

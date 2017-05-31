@@ -1,5 +1,13 @@
 # Change Log
 
+## [3.1.0] - 2017-05-31
+
+* Batch INSERT
+
+### Fixed
+
+* NPE when calling DAO.setDataSource(null)
+
 ## [3.0.0] - 2017-05-28
 
 * MySQL support

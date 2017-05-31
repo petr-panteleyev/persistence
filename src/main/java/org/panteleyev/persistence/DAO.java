@@ -105,17 +105,21 @@ public class DAO {
 
     private DAOProxy setupProxy() {
         // TODO: figure out better way instead of class name check
-        String dsClass = datasource.getClass().getName().toLowerCase();
+        if (datasource != null) {
+            String dsClass = datasource.getClass().getName().toLowerCase();
 
-        if (dsClass.contains("mysql")) {
-            return new MySQLProxy();
+            if (dsClass.contains("mysql")) {
+                return new MySQLProxy();
+            }
+
+            if (dsClass.contains("sqlite")) {
+                return new SQLiteProxy();
+            }
+
+            throw new IllegalStateException("Unsupported database type");
+        } else {
+            return null;
         }
-
-        if (dsClass.contains("sqlite")) {
-            return new SQLiteProxy();
-        }
-
-        throw new IllegalStateException("Unsupported database type");
     }
 
     /**
@@ -630,7 +634,7 @@ public class DAO {
 
     /**
      * This method inserts new record with predefined id into the database. No attempt to generate
-     * new id is made. Calling code must be sure that predefined id is already unique.
+     * new id is made. Calling code must ensure that predefined id is unique.
      * @param <T> type of the record
      * @param record record
      * @return inserted record
@@ -645,6 +649,43 @@ public class DAO {
             return get(record.getId(), (Class<T>)record.getClass());
         } catch (SQLException ex) {
             throw new RuntimeException(ex);
+        }
+    }
+
+    /**
+     * <p>This method inserts multiple records with predefined id using batch insert. No attempt to generate
+     * new id is made. Calling code must ensure that predefined id is unique for all records.</p>
+     * <p>Supplied records are divided to batches of the specified size. To avoid memory issues size of the batch
+     * must be tuned appropriately.</p>
+     * @param size size of the batch
+     * @param records list of records
+     * @param <T> type of records
+     */
+    public <T extends Record> void insert(int size, List<T> records) {
+        if (size < 1) {
+            throw new IllegalArgumentException("Batch size must be >= 1");
+        }
+
+        if (!records.isEmpty()) {
+            String sql = getInsertSQL(records.get(0));
+
+            try (Connection conn = getConnection();
+                 PreparedStatement st = conn.prepareStatement(sql)) {
+                int count = 0;
+
+                for (T r : records) {
+                    setData(r, st, false);
+                    st.addBatch();
+
+                    if (++count % size == 0) {
+                        st.executeBatch();
+                    }
+                }
+
+                st.executeBatch();
+            } catch (SQLException ex) {
+                throw new RuntimeException(ex);
+            }
         }
     }
 
