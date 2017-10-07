@@ -44,7 +44,7 @@ class RecordsTestBase extends Base {
     private static final int RECORD_COUNT_2 = 10;
 
     private static final List<Class<? extends Record>> ALL_CLASSES =
-        Arrays.asList(RecordWithAllTypes.class, RecordWithOptionals.class);
+            Arrays.asList(RecordWithAllTypes.class, RecordWithOptionals.class);
 
     @Test(dataProvider = "recordClasses")
     public void testRecordCreation(Class<? extends Record> clazz) throws Exception {
@@ -214,9 +214,9 @@ class RecordsTestBase extends Base {
 
     @DataProvider(name = "testBatchInsert")
     public Object[][] testBatchInsertDataProvider() {
-        return new Object[][] {
-                { 100, 7 },
-                { 100, 10 }
+        return new Object[][]{
+                {100, 7},
+                {100, 10}
         };
     }
 
@@ -241,6 +241,45 @@ class RecordsTestBase extends Base {
 
         // Size must be the same
         Assert.assertEquals(retrieved.size(), records.size());
+    }
+
+    @Test
+    public void testTruncate() throws Exception {
+        List<Class<? extends Record>> classes = Arrays.asList(RecordWithAllTypes.class, RecordWithPrimitives.class);
+
+        getDao().createTables(classes);
+        getDao().preload(classes);
+
+        List<Record> l1 = Arrays.asList(
+                RecordWithAllTypes.newRecord(getDao().generatePrimaryKey(RecordWithAllTypes.class), RANDOM),
+                RecordWithAllTypes.newRecord(getDao().generatePrimaryKey(RecordWithAllTypes.class), RANDOM),
+                RecordWithAllTypes.newRecord(getDao().generatePrimaryKey(RecordWithAllTypes.class), RANDOM),
+                RecordWithAllTypes.newRecord(getDao().generatePrimaryKey(RecordWithAllTypes.class), RANDOM),
+                RecordWithAllTypes.newRecord(getDao().generatePrimaryKey(RecordWithAllTypes.class), RANDOM)
+        );
+
+        List<Record> l2 = Arrays.asList(
+                RecordWithPrimitives.newRecord(getDao().generatePrimaryKey(RecordWithPrimitives.class), RANDOM),
+                RecordWithPrimitives.newRecord(getDao().generatePrimaryKey(RecordWithPrimitives.class), RANDOM),
+                RecordWithPrimitives.newRecord(getDao().generatePrimaryKey(RecordWithPrimitives.class), RANDOM)
+        );
+
+        getDao().insert(l1.size(), l1);
+        getDao().insert(l2.size(), l2);
+
+        Assert.assertEquals(getDao().getAll(RecordWithAllTypes.class).size(), 5);
+        Assert.assertEquals(getDao().getAll(RecordWithPrimitives.class).size(), 3);
+
+        Assert.assertNotEquals(getDao().generatePrimaryKey(RecordWithAllTypes.class), 1);
+        Assert.assertNotEquals(getDao().generatePrimaryKey(RecordWithPrimitives.class), 1);
+
+        getDao().truncate(classes);
+
+        Assert.assertEquals(getDao().getAll(RecordWithAllTypes.class).size(), 0);
+        Assert.assertEquals(getDao().getAll(RecordWithPrimitives.class).size(), 0);
+
+        Assert.assertTrue(getDao().generatePrimaryKey(RecordWithAllTypes.class) == 1);
+        Assert.assertTrue(getDao().generatePrimaryKey(RecordWithPrimitives.class) == 1);
     }
 
     private <T extends Record> void checkCreatedRecord(Class<T> clazz, Map<Integer, Record> idMap, int count) {

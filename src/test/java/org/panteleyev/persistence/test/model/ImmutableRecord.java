@@ -33,6 +33,7 @@ import org.panteleyev.persistence.annotations.Table;
 import org.panteleyev.persistence.test.Base;
 import org.panteleyev.persistence.test.EnumType;
 import java.math.BigDecimal;
+import java.time.LocalDate;
 import java.util.Date;
 import java.util.Objects;
 import java.util.Random;
@@ -50,6 +51,7 @@ public class ImmutableRecord implements Record {
     private final Long e;
     private final BigDecimal f;
     private final EnumType g;
+    private final LocalDate h;
 
     @RecordBuilder
     public ImmutableRecord(
@@ -60,7 +62,8 @@ public class ImmutableRecord implements Record {
             @Field("d") Date d,
             @Field("e") Long e,
             @Field("f") BigDecimal f,
-            @Field("g") EnumType g
+            @Field("g") EnumType g,
+            @Field("h") LocalDate h
     ) {
         this.id = id;
         this.a = a;
@@ -70,6 +73,7 @@ public class ImmutableRecord implements Record {
         this.e = e;
         this.f = f;
         this.g = g;
+        this.h = h;
     }
 
     @Field(value = Field.ID, primaryKey = true)
@@ -113,6 +117,11 @@ public class ImmutableRecord implements Record {
         return g;
     }
 
+    @Field("h")
+    public LocalDate getH() {
+        return h;
+    }
+
     public static ImmutableRecord newRecord(Integer id, Random random) {
         return new ImmutableRecord(
                 id,
@@ -122,13 +131,15 @@ public class ImmutableRecord implements Record {
                 new Date(),
                 random.nextLong(),
                 BigDecimal.TEN,
-                EnumType.F1
+                EnumType.F1,
+                LocalDate.now()
         );
     }
 
     public static ImmutableRecord newNullRecord(Integer id) {
         return new ImmutableRecord(
                 id,
+                null,
                 null,
                 null,
                 null,
@@ -151,7 +162,8 @@ public class ImmutableRecord implements Record {
                     && Objects.equals(this.d, that.d)
                     && Objects.equals(this.e, that.e)
                     && Base.compareBigDecimals(this.f, that.f)
-                    && Objects.equals(this.g, that.g);
+                    && Objects.equals(this.g, that.g)
+                    && Objects.equals(this.h, that.h);
         } else {
             return false;
         }
@@ -159,6 +171,6 @@ public class ImmutableRecord implements Record {
 
     @Override
     public int hashCode() {
-        return Objects.hash(a, b, c, d, e, f, g);
+        return Objects.hash(a, b, c, d, e, f, g, h);
     }
 }

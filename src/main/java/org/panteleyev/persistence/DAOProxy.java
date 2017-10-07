@@ -32,10 +32,13 @@ import org.panteleyev.persistence.annotations.ReferenceOption;
 import org.panteleyev.persistence.annotations.Table;
 import java.lang.reflect.Method;
 import java.math.BigDecimal;
+import java.sql.Connection;
 import java.sql.PreparedStatement;
 import java.sql.ResultSet;
 import java.sql.SQLException;
+import java.sql.Statement;
 import java.sql.Types;
+import java.time.LocalDate;
 import java.util.Date;
 import java.util.List;
 import java.util.Objects;
@@ -47,66 +50,77 @@ import static org.panteleyev.persistence.DAOTypes.TYPE_DATE;
 import static org.panteleyev.persistence.DAOTypes.TYPE_ENUM;
 import static org.panteleyev.persistence.DAOTypes.TYPE_INT;
 import static org.panteleyev.persistence.DAOTypes.TYPE_INTEGER;
+import static org.panteleyev.persistence.DAOTypes.TYPE_LOCAL_DATE;
 import static org.panteleyev.persistence.DAOTypes.TYPE_LONG;
 import static org.panteleyev.persistence.DAOTypes.TYPE_LONG_PRIM;
 import static org.panteleyev.persistence.DAOTypes.TYPE_STRING;
 
 interface DAOProxy {
     Object getFieldValue(String fieldName, Class typeClass, ResultSet set) throws SQLException;
+
     String getColumnString(Field fld, ForeignKey foreignKey, String typeName, List<String> constraints);
+
+    void truncate(Connection connection, List<Class<? extends Record>> tables);
 
     default void setFieldData(PreparedStatement st, int index, Object value, String typeName) throws SQLException {
         switch (typeName) {
-            case TYPE_STRING :
+            case TYPE_STRING:
                 if (value == null) {
                     st.setNull(index, Types.VARCHAR);
                 } else {
-                    st.setString(index, (String)value);
+                    st.setString(index, (String) value);
                 }
                 break;
-            case TYPE_BOOL :
-            case TYPE_BOOLEAN :
+            case TYPE_BOOL:
+            case TYPE_BOOLEAN:
                 if (value == null) {
                     st.setNull(index, Types.BOOLEAN);
                 } else {
-                    st.setBoolean(index, (Boolean)value);
+                    st.setBoolean(index, (Boolean) value);
                 }
                 break;
-            case TYPE_INTEGER :
-            case TYPE_INT :
+            case TYPE_INTEGER:
+            case TYPE_INT:
                 if (value == null) {
                     st.setNull(index, Types.INTEGER);
                 } else {
-                    st.setInt(index, (Integer)value);
+                    st.setInt(index, (Integer) value);
                 }
                 break;
-            case TYPE_LONG :
-            case TYPE_LONG_PRIM :
+            case TYPE_LONG:
+            case TYPE_LONG_PRIM:
                 if (value == null) {
                     st.setNull(index, Types.INTEGER);
                 } else {
-                    st.setLong(index, (Long)value);
+                    st.setLong(index, (Long) value);
                 }
                 break;
-            case TYPE_DATE :
+            case TYPE_DATE:
                 if (value == null) {
                     st.setNull(index, Types.INTEGER);
                 } else {
-                    st.setLong(index, ((Date)value).getTime());
+                    st.setLong(index, ((Date) value).getTime());
                 }
                 break;
-            case TYPE_BIG_DECIMAL :
+            case TYPE_LOCAL_DATE:
+                if (value == null) {
+                    st.setNull(index, Types.INTEGER);
+                } else {
+                    st.setLong(index, ((LocalDate) value).toEpochDay());
+                }
+                break;
+            case TYPE_BIG_DECIMAL:
                 if (value == null) {
                     st.setNull(index, Types.DECIMAL);
                 } else {
-                    st.setBigDecimal(index, (BigDecimal)value);
+                    st.setBigDecimal(index, (BigDecimal) value);
                 }
                 break;
             case TYPE_ENUM:
                 if (value == null) {
                     st.setNull(index, Types.VARCHAR);
                 } else {
-                    st.setString(index, ((Enum)value).name());
+                    st.setString(index, ((Enum) value).name());
                 }
                 break;
             default:
@@ -167,5 +181,13 @@ interface DAOProxy {
                 .append(")");
 
         return b.toString();
+    }
+
+    default void deleteAll(Connection connection, Class<? extends Record> table) {
+        try (Statement statement = connection.createStatement()) {
+            statement.execute("DELETE FROM " + Record.getTableName(table));
+        } catch (SQLException ex) {
+            throw new RuntimeException(ex);
+        }
     }
 }

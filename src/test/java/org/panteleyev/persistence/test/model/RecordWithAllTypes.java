@@ -26,6 +26,7 @@
 package org.panteleyev.persistence.test.model;
 
 import java.math.BigDecimal;
+import java.time.LocalDate;
 import java.util.Date;
 import java.util.Objects;
 import java.util.Random;
@@ -48,11 +49,12 @@ public class RecordWithAllTypes implements Record {
     private Long e;
     private BigDecimal f;
     private EnumType g;
+    private LocalDate h;
 
     public RecordWithAllTypes() {
     }
 
-    public RecordWithAllTypes(Integer id, String a, Integer b, Boolean c, Date d, Long e, BigDecimal f, EnumType g) {
+    public RecordWithAllTypes(Integer id, String a, Integer b, Boolean c, Date d, Long e, BigDecimal f, EnumType g, LocalDate h) {
         this.id = id;
         this.a = a;
         this.b = b;
@@ -61,6 +63,7 @@ public class RecordWithAllTypes implements Record {
         this.e = e;
         this.f = f;
         this.g = g;
+        this.h = h;
     }
 
     @Field(value = Field.ID, primaryKey = true)
@@ -137,6 +140,15 @@ public class RecordWithAllTypes implements Record {
         this.g = g;
     }
 
+    @Field("h")
+    public LocalDate getH() {
+        return h;
+    }
+
+    public void setH(LocalDate h) {
+        this.h = h;
+    }
+
     public static RecordWithAllTypes newRecord(Integer id, Random random) {
         return new RecordWithAllTypes(
                 id,
@@ -146,13 +158,15 @@ public class RecordWithAllTypes implements Record {
                 new Date(),
                 random.nextLong(),
                 BigDecimal.TEN,
-                EnumType.F2
+                EnumType.F2,
+                LocalDate.now()
         );
     }
 
     public static RecordWithAllTypes newNullRecord(Integer id) {
         return new RecordWithAllTypes(
                 id,
+                null,
                 null,
                 null,
                 null,
@@ -166,7 +180,7 @@ public class RecordWithAllTypes implements Record {
     @Override
     public boolean equals(Object o) {
         if (o instanceof RecordWithAllTypes) {
-            RecordWithAllTypes that = (RecordWithAllTypes)o;
+            RecordWithAllTypes that = (RecordWithAllTypes) o;
 
             return Objects.equals(this.id, that.id)
                     && Objects.equals(this.a, that.a)
@@ -175,7 +189,8 @@ public class RecordWithAllTypes implements Record {
                     && Objects.equals(this.d, that.d)
                     && Objects.equals(this.e, that.e)
                     && Base.compareBigDecimals(this.f, that.f)
-                    && Objects.equals(this.g, that.g);
+                    && Objects.equals(this.g, that.g)
+                    && Objects.equals(this.h, that.h);
         } else {
             return false;
         }
@@ -183,6 +198,6 @@ public class RecordWithAllTypes implements Record {
 
     @Override
     public int hashCode() {
-        return Objects.hash(a, b, c, d, e, f, g);
+        return Objects.hash(a, b, c, d, e, f, g, h);
     }
 }

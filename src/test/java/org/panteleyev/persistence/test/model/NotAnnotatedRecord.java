@@ -24,7 +24,13 @@
  * POSSIBILITY OF SUCH DAMAGE.
  */
 
-/**
- * This package defines persistence API.
- */
-package org.panteleyev.persistence;
+package org.panteleyev.persistence.test.model;
+
+import org.panteleyev.persistence.Record;
+
+public class NotAnnotatedRecord implements Record {
+    @Override
+    public int getId() {
+        return 0;
+    }
+}

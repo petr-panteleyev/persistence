@@ -27,7 +27,7 @@ Persistence library provides annotation classes for database access.
 
 <p>Mutable objects must implement appropriate setters following JavaBean specification.</p>
 
-<pre><code style="font-size:x-small">
+<pre><code>
 &commat;Table("book")
 class Book implements Record {
     private int id;
@@ -58,7 +58,7 @@ class Book implements Record {
 <p>Immutable objects are supported by annotation {@link org.panteleyev.persistence.annotations.RecordBuilder}
 as shown below.</p>
 
-<pre><code style="font-size:x-small">
+<pre><code>
 &commat;Table("book")
 class Book implements Record {
     private final int id;
@@ -112,11 +112,17 @@ class Book implements Record {
         <td>BIGINT</td>
         <td>Dates are stored as long using {@link java.util.Date#getTime}</td>
     </tr>
+    <tr>
+        <td>{@link java.time.LocalDate}</td>
+        <td>INTEGER</td>
+        <td>BIGINT</td>
+        <td>Local dates are stored as long using {@link java.time.LocalDate#toEpochDay}</td>
+    </tr>
 </table>
 
 <p style="font-size: large;"><strong>Indexes and Foreign Keys</strong></p>
 
-<pre><code style="font-size:x-small">
+<pre><code>
 &commat;Table("parent_table")
 public class ParentTable implements Record {
     // ...
@@ -133,7 +139,7 @@ public class ParentTable implements Record {
 
 <p>This will produce the following SQL for indexed field:<br><code>CREATE UNIQUE INDEX data ON parent_table(data)</code></p>
 
-<pre><code style="font-size:x-small">
+<pre><code>
 &commat;Table("child_table")
 public class ChildTable implements Record {
     // ...

@@ -27,8 +27,11 @@ package org.panteleyev.persistence;
 
 import org.panteleyev.persistence.annotations.Field;
 import org.panteleyev.persistence.annotations.ForeignKey;
+import java.sql.Connection;
 import java.sql.ResultSet;
 import java.sql.SQLException;
+import java.sql.Statement;
+import java.time.LocalDate;
 import java.util.Date;
 import java.util.List;
 
@@ -38,40 +41,43 @@ class MySQLProxy implements DAOProxy, DAOTypes {
     public Object getFieldValue(String fieldName, Class typeClass, ResultSet set) throws SQLException {
         Object value = set.getObject(fieldName);
 
-        String typeName = typeClass.isEnum()? TYPE_ENUM : typeClass.getName();
+        String typeName = typeClass.isEnum() ? TYPE_ENUM : typeClass.getName();
 
         if (value != null) {
             switch (typeName) {
-                case TYPE_STRING :
-                case TYPE_INTEGER :
-                case TYPE_INT :
-                case TYPE_LONG :
-                case TYPE_LONG_PRIM :
-                case TYPE_BOOL :
-                case TYPE_BOOLEAN :
+                case TYPE_STRING:
+                case TYPE_INTEGER:
+                case TYPE_INT:
+                case TYPE_LONG:
+                case TYPE_LONG_PRIM:
+                case TYPE_BOOL:
+                case TYPE_BOOLEAN:
                     // do nothing
                     break;
-                case TYPE_BIG_DECIMAL :
+                case TYPE_BIG_DECIMAL:
                     value = set.getBigDecimal(fieldName);
                     break;
-                case TYPE_DATE :
+                case TYPE_DATE:
                     value = new Date(set.getLong(fieldName));
                     break;
-                case TYPE_ENUM :
-                    value = Enum.valueOf(typeClass, (String)value);
+                case TYPE_LOCAL_DATE:
+                    value = LocalDate.ofEpochDay(set.getLong(fieldName));
+                    break;
+                case TYPE_ENUM:
+                    value = Enum.valueOf(typeClass, (String) value);
                     break;
                 default:
                     throw new IllegalStateException(BAD_FIELD_TYPE);
             }
         } else {
             switch (typeName) {
-                case TYPE_INT :
+                case TYPE_INT:
                     value = 0;
                     break;
-                case TYPE_LONG_PRIM :
+                case TYPE_LONG_PRIM:
                     value = 0L;
                     break;
-                case TYPE_BOOL :
+                case TYPE_BOOL:
                     value = false;
                     break;
             }
@@ -90,22 +96,23 @@ class MySQLProxy implements DAOProxy, DAOTypes {
                         .append(fld.length())
                         .append(")");
                 break;
-            case TYPE_BOOL :
-            case TYPE_BOOLEAN :
+            case TYPE_BOOL:
+            case TYPE_BOOLEAN:
                 b.append("BOOLEAN");
                 break;
-            case TYPE_INTEGER :
-            case TYPE_INT :
+            case TYPE_INTEGER:
+            case TYPE_INT:
                 b.append("INTEGER");
                 break;
-            case TYPE_LONG :
-            case TYPE_LONG_PRIM :
+            case TYPE_LONG:
+            case TYPE_LONG_PRIM:
                 b.append("BIGINT");
                 break;
-            case TYPE_DATE :
+            case TYPE_DATE:
+            case TYPE_LOCAL_DATE:
                 b.append("BIGINT");
                 break;
-            case TYPE_BIG_DECIMAL :
+            case TYPE_BIG_DECIMAL:
                 b.append("DECIMAL(")
                         .append(fld.precision())
                         .append(",")
@@ -129,5 +136,15 @@ class MySQLProxy implements DAOProxy, DAOTypes {
         }
 
         return b.toString();
+    }
+
+    public void truncate(Connection connection, List<Class<? extends Record>> tables) {
+        try (Statement statement = connection.createStatement()) {
+            for (Class<? extends Record> t : tables) {
+                statement.execute("TRUNCATE TABLE " + Record.getTableName(t));
+            }
+        } catch (SQLException ex) {
+            throw new RuntimeException(ex);
+        }
     }
 }

@@ -27,6 +27,7 @@
 package org.panteleyev.persistence.test.model;
 
 import java.math.BigDecimal;
+import java.time.LocalDate;
 import java.util.Date;
 import java.util.Objects;
 import java.util.Optional;
@@ -50,11 +51,12 @@ public class RecordWithOptionals implements Record {
     private Long e;
     private BigDecimal f;
     private EnumType g;
+    private LocalDate h;
 
     public RecordWithOptionals() {
     }
 
-    public RecordWithOptionals(Integer id, String a, Integer b, Boolean c, Date d, Long e, BigDecimal f, EnumType g) {
+    public RecordWithOptionals(Integer id, String a, Integer b, Boolean c, Date d, Long e, BigDecimal f, EnumType g, LocalDate h) {
         this.id = id;
         this.a = a;
         this.b = b;
@@ -63,6 +65,7 @@ public class RecordWithOptionals implements Record {
         this.e = e;
         this.f = f;
         this.g = g;
+        this.h = h;
     }
 
     @Field(value = Field.ID, primaryKey = true)
@@ -139,6 +142,16 @@ public class RecordWithOptionals implements Record {
         this.g = g;
     }
 
+    @Field("h")
+    public Optional<LocalDate> getH() {
+        return Optional.ofNullable(h);
+    }
+
+    public void setH(LocalDate h) {
+        this.h = h;
+    }
+
+
 
     public static RecordWithOptionals newRecord(Integer id, Random random) {
         return new RecordWithOptionals(
@@ -149,13 +162,15 @@ public class RecordWithOptionals implements Record {
                 new Date(),
                 random.nextLong(),
                 BigDecimal.TEN,
-                EnumType.F3
+                EnumType.F3,
+                LocalDate.now()
         );
     }
 
     public static RecordWithOptionals newNullRecord(Integer id) {
         return new RecordWithOptionals(
                 id,
+                null,
                 null,
                 null,
                 null,

@@ -1,5 +1,13 @@
 # Change Log
 
+## [3.2.0] - 2017-10-07
+
+* Truncate table
+* Drop table
+* Additional methods with connection as a parameter
+* Utility methods in Record interface
+* LocalDate fields support
+
 ## [3.1.0] - 2017-05-31
 
 * Batch INSERT

@@ -52,7 +52,6 @@ import java.util.Collection;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
-import java.util.Objects;
 import java.util.Optional;
 import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
@@ -64,7 +63,7 @@ import static org.panteleyev.persistence.DAOTypes.TYPE_ENUM;
  * Persistence API entry point.
  */
 public class DAO {
-    private static final String NOT_ANNOTATED    = "Class is not properly annotated";
+    private static final String NOT_ANNOTATED = "Class is not properly annotated";
 
     private final Map<Class<? extends Record>, Integer> primaryKeys = new ConcurrentHashMap<>();
     private final Map<Class<? extends Record>, String> insertSQL = new ConcurrentHashMap<>();
@@ -85,6 +84,7 @@ public class DAO {
 
     /**
      * Return current data source object.
+     *
      * @return data source object
      */
     public DataSource getDataSource() {
@@ -93,6 +93,7 @@ public class DAO {
 
     /**
      * Sets a new data source.
+     *
      * @param ds data source
      */
     public void setDataSource(DataSource ds) {
@@ -124,6 +125,7 @@ public class DAO {
 
     /**
      * Returns connection for the current data source.
+     *
      * @return connection
      * @throws SQLException in case of SQL error
      */
@@ -133,9 +135,10 @@ public class DAO {
 
     /**
      * Retrieves record from the database using record ID.
-     * @param id record id
+     *
+     * @param id    record id
      * @param clazz record class
-     * @param <T> type of the record
+     * @param <T>   type of the record
      * @return record
      */
     public <T extends Record> T get(Integer id, Class<? extends T> clazz) {
@@ -161,7 +164,7 @@ public class DAO {
             ps.setInt(1, id);
             ResultSet set = ps.executeQuery();
 
-            return (set.next())? fromSQL(set, clazz) : null;
+            return (set.next()) ? fromSQL(set, clazz) : null;
         } catch (SQLException ex) {
             throw new RuntimeException(ex);
         }
@@ -169,8 +172,9 @@ public class DAO {
 
     /**
      * Retrieves all records of the specified type.
+     *
      * @param clazz record class
-     * @param <T> type of the record
+     * @param <T>   type of the record
      * @return list of records
      */
     public <T extends Record> List<T> getAll(Class<T> clazz) {
@@ -195,8 +199,9 @@ public class DAO {
 
     /**
      * Retrieves all records of the specified type and fills the map.
-     * @param clazz record class
-     * @param <T> type of the record
+     *
+     * @param clazz  record class
+     * @param <T>    type of the record
      * @param result map to fill
      */
     public <T extends Record> void getAll(Class<T> clazz, Map<Integer, T> result) {
@@ -220,7 +225,7 @@ public class DAO {
     private <T extends Record> T fromSQL(ResultSet set, Class<T> clazz) {
         try {
             // First try to find @RecordBuilder constructor
-            for (Constructor constructor : clazz.getConstructors()) {
+            for (Constructor<?> constructor : clazz.getConstructors()) {
                 if (constructor.isAnnotationPresent(RecordBuilder.class)) {
                     return fromSQL(set, constructor);
                 }
@@ -245,13 +250,13 @@ public class DAO {
             String fieldName = Arrays.stream(paramAnnotations[i])
                     .filter(a -> a instanceof Field)
                     .findAny()
-                    .map(a -> ((Field)a).value())
+                    .map(a -> ((Field) a).value())
                     .orElseThrow(RuntimeException::new);
 
             params[i] = proxy.getFieldValue(fieldName, paramTypes[i], set);
         }
 
-        return (T)constructor.newInstance(params);
+        return (T) constructor.newInstance(params);
     }
 
     private void fromSQL(ResultSet set, Record record) throws SQLException {
@@ -282,7 +287,7 @@ public class DAO {
                     }
                 }
             }
-        } catch (IntrospectionException | IllegalAccessException | IllegalArgumentException | InvocationTargetException ex) {
+        } catch (Exception ex) {
             throw new RuntimeException(ex);
         }
     }
@@ -291,19 +296,20 @@ public class DAO {
         Type rType = getter.getGenericReturnType();
 
         if (rType instanceof ParameterizedType) {
-            Type[] actualTypeArguments = ((ParameterizedType)rType).getActualTypeArguments();
+            Type[] actualTypeArguments = ((ParameterizedType) rType).getActualTypeArguments();
             if (actualTypeArguments.length != 1) {
                 throw new IllegalStateException(BAD_FIELD_TYPE);
             } else {
-                return (Class)actualTypeArguments[0];
+                return (Class) actualTypeArguments[0];
             }
         } else {
-            return (Class)rType;
+            return (Class) rType;
         }
     }
 
     /**
      * This method creates table for the specified classes according to their annotations.
+     *
      * @param tables list of tables
      */
     public void createTables(List<Class<? extends Record>> tables) {
@@ -493,7 +499,7 @@ public class DAO {
                 throw new IllegalStateException(NOT_ANNOTATED);
             }
             b.append(table.value())
-                .append(" where ");
+                    .append(" where ");
 
             String idName = null;
 
@@ -519,7 +525,7 @@ public class DAO {
             }
 
             b.append(idName)
-                .append("=?");
+                    .append("=?");
 
             return b.toString();
         });
@@ -552,7 +558,7 @@ public class DAO {
                         getterClass = getEffectiveType(getter);
 
                         Method isPresentMethod = Optional.class.getDeclaredMethod("isPresent");
-                        if ((Boolean)isPresentMethod.invoke(value)) {
+                        if ((Boolean) isPresentMethod.invoke(value)) {
                             value = Optional.class
                                     .getDeclaredMethod("get")
                                     .invoke(value);
@@ -561,7 +567,7 @@ public class DAO {
                         }
                     }
 
-                    String typeName = getterClass.isEnum()? TYPE_ENUM : getterClass.getName();
+                    String typeName = getterClass.isEnum() ? TYPE_ENUM : getterClass.getName();
                     proxy.setFieldData(st, index++, value, typeName);
                 }
             }
@@ -569,13 +575,13 @@ public class DAO {
             if (update) {
                 st.setInt(index, record.getId());
             }
-        } catch (IntrospectionException | IllegalAccessException | IllegalArgumentException | InvocationTargetException | NoSuchMethodException ex) {
+        } catch (Exception ex) {
             throw new RuntimeException(ex);
         }
     }
 
     private PreparedStatement getPreparedStatement(Record record, Connection conn, boolean update) throws SQLException {
-        String sql = (update)? getUpdateSQL(record) : getInsertSQL(record);
+        String sql = (update) ? getUpdateSQL(record) : getInsertSQL(record);
         PreparedStatement st = conn.prepareStatement(sql);
         setData(record, st, update);
         return st;
@@ -596,6 +602,7 @@ public class DAO {
     /**
      * Pre-loads necessary information from the just opened database. This method must be called prior to any other
      * database operations. Otherwise primary keys may be generated incorrectly.
+     *
      * @param tables list of {@link Record} types
      */
     public void preload(Collection<Class<? extends Record>> tables) {
@@ -611,11 +618,12 @@ public class DAO {
 
     /**
      * Returns next available primary key value. This method is thread safe.
+     *
      * @param clazz record class
      * @return primary key value
      */
     public Integer generatePrimaryKey(Class<? extends Record> clazz) {
-        return primaryKeys.compute(clazz, (k, v) -> (v == null)? 1 : ++v);
+        return primaryKeys.compute(clazz, (k, v) -> (v == null) ? 1 : ++v);
     }
 
     private Integer getIdMaxValue(String tableName) {
@@ -635,18 +643,38 @@ public class DAO {
     /**
      * This method inserts new record with predefined id into the database. No attempt to generate
      * new id is made. Calling code must ensure that predefined id is unique.
-     * @param <T> type of the record
+     *
+     * @param <T>    type of the record
      * @param record record
      * @return inserted record
+     * @throws IllegalArgumentException if id of the record is 0
      */
     public <T extends Record> T insert(T record) {
-        Objects.requireNonNull(record.getId());
+        try (Connection conn = getDataSource().getConnection()) {
+            return insert(conn, record);
+        } catch (SQLException ex) {
+            throw new RuntimeException(ex);
+        }
+    }
 
-        try (Connection conn = getDataSource().getConnection();
-             PreparedStatement ps = getPreparedStatement(record, conn, false)) {
-            ps.executeUpdate();
+    /**
+     * This method inserts new record with predefined id into the database. No attempt to generate
+     * new id is made. Calling code must ensure that predefined id is unique.
+     *
+     * @param <T>    type of the record
+     * @param conn   SQL connection
+     * @param record record
+     * @return inserted record
+     * @throws IllegalArgumentException if id of the record is 0
+     */
+    public <T extends Record> T insert(Connection conn, T record) {
+        if (record.getId() == 0) {
+            throw new IllegalArgumentException("id == 0");
+        }
 
-            return get(record.getId(), (Class<T>)record.getClass());
+        try (PreparedStatement st = getPreparedStatement(record, conn, false)) {
+            st.executeUpdate();
+            return get(record.getId(), (Class<T>) record.getClass());
         } catch (SQLException ex) {
             throw new RuntimeException(ex);
         }
@@ -657,11 +685,31 @@ public class DAO {
      * new id is made. Calling code must ensure that predefined id is unique for all records.</p>
      * <p>Supplied records are divided to batches of the specified size. To avoid memory issues size of the batch
      * must be tuned appropriately.</p>
-     * @param size size of the batch
+     *
+     * @param size    size of the batch
      * @param records list of records
-     * @param <T> type of records
+     * @param <T>     type of records
      */
     public <T extends Record> void insert(int size, List<T> records) {
+        try (Connection conn = getConnection()) {
+            insert(conn, size, records);
+        } catch (SQLException ex) {
+            throw new RuntimeException(ex);
+        }
+    }
+
+    /**
+     * <p>This method inserts multiple records with predefined id using batch insert. No attempt to generate
+     * new id is made. Calling code must ensure that predefined id is unique for all records.</p>
+     * <p>Supplied records are divided to batches of the specified size. To avoid memory issues size of the batch
+     * must be tuned appropriately.</p>
+     *
+     * @param conn    SQL connection
+     * @param size    size of the batch
+     * @param records list of records
+     * @param <T>     type of records
+     */
+    public <T extends Record> void insert(Connection conn, int size, List<T> records) {
         if (size < 1) {
             throw new IllegalArgumentException("Batch size must be >= 1");
         }
@@ -669,8 +717,7 @@ public class DAO {
         if (!records.isEmpty()) {
             String sql = getInsertSQL(records.get(0));
 
-            try (Connection conn = getConnection();
-                 PreparedStatement st = conn.prepareStatement(sql)) {
+            try (PreparedStatement st = conn.prepareStatement(sql)) {
                 int count = 0;
 
                 for (T r : records) {
@@ -692,29 +739,52 @@ public class DAO {
     /**
      * Updates record in the database. This method returns instance of the {@link Record}, i.e. supplied object is
      * not changed.
+     *
      * @param record record
-     * @param <T> record type
+     * @param <T>    record type
      * @return updated record
+     * @throws IllegalArgumentException if id of the record is 0
      */
     public <T extends Record> T update(T record) {
-        Objects.requireNonNull(record.getId());
-
-        try (Connection conn = getDataSource().getConnection();
-                PreparedStatement ps = getPreparedStatement(record, conn, true)) {
-            ps.executeUpdate();
-
-            return get(record.getId(), (Class<T>)record.getClass());
+        try (Connection conn = getDataSource().getConnection()) {
+            return update(conn, record);
         } catch (SQLException ex) {
             throw new RuntimeException(ex);
         }
     }
 
     /**
+     * Updates record in the database. This method returns instance of the {@link Record}, i.e. supplied object is
+     * not changed.
+     *
+     * @param conn   SQL connection
+     * @param record record
+     * @param <T>    record type
+     * @return updated record
+     * @throws IllegalArgumentException if id of the record is 0
+     */
+    public <T extends Record> T update(Connection conn, T record) {
+        if (record.getId() == 0) {
+            throw new IllegalArgumentException("id == 0");
+        }
+
+        try (PreparedStatement ps = getPreparedStatement(record, conn, true)) {
+            ps.executeUpdate();
+            return get(record.getId(), (Class<T>) record.getClass());
+        } catch (SQLException ex) {
+            throw new RuntimeException(ex);
+        }
+    }
+
+
+    /**
      * Deleted record from the database.
+     *
      * @param record record to delete
      */
     public void delete(Record record) {
-        try (Connection conn = getDataSource().getConnection(); PreparedStatement ps = getDeleteStatement(record, conn)) {
+        try (Connection conn = getDataSource().getConnection();
+             PreparedStatement ps = getDeleteStatement(record, conn)) {
             ps.executeUpdate();
         } catch (SQLException ex) {
             throw new RuntimeException(ex);
@@ -723,12 +793,80 @@ public class DAO {
 
     /**
      * Deletes record from the database.
-     * @param id id of the record
+     *
+     * @param id    id of the record
      * @param clazz record type
      */
     public void delete(Integer id, Class<? extends Record> clazz) {
-        try (Connection conn = getDataSource().getConnection(); PreparedStatement ps = getDeleteStatement(id, clazz, conn)) {
+        try (Connection conn = getDataSource().getConnection();
+             PreparedStatement ps = getDeleteStatement(id, clazz, conn)) {
             ps.executeUpdate();
+        } catch (SQLException ex) {
+            throw new RuntimeException(ex);
+        }
+    }
+
+    /**
+     * Deletes all records from table.
+     *
+     * @param table table
+     */
+    public void deleteAll(Class<? extends Record> table) {
+        try (Connection connection = getDataSource().getConnection()) {
+            deleteAll(connection, table);
+        } catch (SQLException ex) {
+            throw new RuntimeException(ex);
+        }
+    }
+
+    /**
+     * Deletes all records from table using provided connection.
+     *
+     * @param connection SQL connection
+     * @param table      table class
+     */
+    public void deleteAll(Connection connection, Class<? extends Record> table) {
+        proxy.deleteAll(connection, table);
+    }
+
+    /**
+     * Truncates tables removing all records. Primary key generation starts from 1 again. For MySQL this operation
+     * uses <code>TRUNCATE TABLE table_name</code> command. As SQLite does not support this command <code>DELETE FROM
+     * table_name</code> is used instead.
+     *
+     * @param tables tables to truncate
+     */
+    public void truncate(List<Class<? extends Record>> tables) {
+        try (Connection connection = getDataSource().getConnection()) {
+            proxy.truncate(connection, tables);
+            for (Class<? extends Record> t : tables) {
+                primaryKeys.put(t, 0);
+            }
+        } catch (SQLException ex) {
+            throw new RuntimeException(ex);
+        }
+    }
+
+    /**
+     * Resets primary key generation for the given table. Next call to {@link DAO#generatePrimaryKey(Class)}
+     * will return 1. This method should only be used in case of manual table truncate.
+     *
+     * @param table table class
+     */
+    protected void resetPrimaryKey(Class<? extends Record> table) {
+        primaryKeys.put(table, 0);
+    }
+
+    /**
+     * Drops specified tables according to their annotations.
+     *
+     * @param tables table classes
+     */
+    public void dropTables(List<Class<? extends Record>> tables) {
+        try (Connection conn = getDataSource().getConnection(); Statement st = conn.createStatement()) {
+            for (Class<? extends Record> t : tables) {
+                st.execute("DROP TABLE " + Record.getTableName(t));
+            }
         } catch (SQLException ex) {
             throw new RuntimeException(ex);
         }

@@ -28,6 +28,7 @@ package org.panteleyev.persistence;
 interface DAOTypes {
     String TYPE_BIG_DECIMAL = "java.math.BigDecimal";
     String TYPE_DATE        = "java.util.Date";
+    String TYPE_LOCAL_DATE  = "java.time.LocalDate";
     String TYPE_LONG        = "java.lang.Long";
     String TYPE_INTEGER     = "java.lang.Integer";
     String TYPE_BOOLEAN     = "java.lang.Boolean";

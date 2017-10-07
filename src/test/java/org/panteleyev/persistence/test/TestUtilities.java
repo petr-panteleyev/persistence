@@ -24,7 +24,29 @@
  * POSSIBILITY OF SUCH DAMAGE.
  */
 
-/**
- * This package defines persistence API.
- */
-package org.panteleyev.persistence;
+package org.panteleyev.persistence.test;
+
+import org.panteleyev.persistence.Record;
+import org.panteleyev.persistence.test.model.NotAnnotatedRecord;
+import org.panteleyev.persistence.test.model.RecordWithAllTypes;
+import org.testng.Assert;
+import org.testng.annotations.Test;
+
+@Test
+public class TestUtilities {
+    @Test
+    public void testGetTableName() {
+        Assert.assertEquals(Record.getTableName(RecordWithAllTypes.class), "all_types_table");
+        Assert.assertEquals(new RecordWithAllTypes().getTableName(), "all_types_table");
+    }
+
+    @Test(expectedExceptions = {IllegalStateException.class})
+    public void testGetTableNameStaticNegative() {
+        Record.getTableName(NotAnnotatedRecord.class);
+    }
+
+    @Test(expectedExceptions = {IllegalStateException.class})
+    public void testGetTableNameNegative() {
+        new NotAnnotatedRecord().getTableName();
+    }
+}

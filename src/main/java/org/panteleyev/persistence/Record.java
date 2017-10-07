@@ -25,6 +25,8 @@
  */
 package org.panteleyev.persistence;
 
+import org.panteleyev.persistence.annotations.Table;
+
 /**
  * Database record.
  */
@@ -43,5 +45,29 @@ public interface Record {
      */
     default void setId(int id) {
         throw new UnsupportedOperationException();
+    }
+
+    /**
+     * Returns table name. Class must be annotated by {@link Table}.
+     * @return table name
+     * @throws IllegalStateException if class is not annotated by {@link Table}.
+     */
+    default String getTableName() {
+        return getTableName(getClass());
+    }
+
+    /**
+     * Returns table name for table class. Class must be annotated by {@link Table}.
+     * @param table table class
+     * @return table name
+     * @throws IllegalStateException if class is not annotated by {@link Table}.
+     */
+    static String getTableName(Class<? extends Record> table) {
+        Table annotation = table.getAnnotation(Table.class);
+        if (annotation != null) {
+            return annotation.value();
+        } else {
+            throw new IllegalStateException("Class " + table.getName() + "is not properly annotated");
+        }
     }
 }
