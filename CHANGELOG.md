@@ -1,5 +1,9 @@
 # Change Log
 
+## [3.2.1] - 2017-10-19
+
+* Java 9 module
+
 ## [3.2.0] - 2017-10-07
 
 * Truncate table
