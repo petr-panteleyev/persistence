@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2017, Petr Panteleyev <petr@panteleyev.org>
+ * Copyright (c) 2017, 2018, Petr Panteleyev <petr@panteleyev.org>
  * All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
@@ -25,30 +25,39 @@
  */
 package org.panteleyev.persistence.test.model;
 
+import org.panteleyev.persistence.Record;
+import org.panteleyev.persistence.annotations.Column;
+import org.panteleyev.persistence.annotations.Table;
+import org.panteleyev.persistence.test.Base;
+import org.panteleyev.persistence.test.EnumType;
 import java.math.BigDecimal;
 import java.time.LocalDate;
 import java.util.Date;
 import java.util.Objects;
 import java.util.Random;
 import java.util.UUID;
-import org.panteleyev.persistence.Record;
-import org.panteleyev.persistence.annotations.Field;
-import org.panteleyev.persistence.annotations.Table;
-import org.panteleyev.persistence.test.Base;
-import org.panteleyev.persistence.test.EnumType;
 
 @Table("all_types_table")
 public class RecordWithAllTypes implements Record {
+    @Column(value = Column.ID, primaryKey = true)
     private Integer id;
 
     // fields
+    @Column("a")
     private String a;
+    @Column("b")
     private Integer b;
+    @Column("c")
     private Boolean c;
+    @Column("d")
     private Date d;
+    @Column("e")
     private Long e;
+    @Column("f")
     private BigDecimal f;
+    @Column("g")
     private EnumType g;
+    @Column("h")
     private LocalDate h;
 
     public RecordWithAllTypes() {
@@ -66,7 +75,6 @@ public class RecordWithAllTypes implements Record {
         this.h = h;
     }
 
-    @Field(value = Field.ID, primaryKey = true)
     @Override
     public int getId() {
         return id;
@@ -77,7 +85,6 @@ public class RecordWithAllTypes implements Record {
         this.id = id;
     }
 
-    @Field("a")
     public String getA() {
         return a;
     }
@@ -86,7 +93,6 @@ public class RecordWithAllTypes implements Record {
         this.a = a;
     }
 
-    @Field("b")
     public Integer getB() {
         return b;
     }
@@ -95,7 +101,6 @@ public class RecordWithAllTypes implements Record {
         this.b = b;
     }
 
-    @Field("c")
     public Boolean getC() {
         return c;
     }
@@ -104,7 +109,6 @@ public class RecordWithAllTypes implements Record {
         this.c = c;
     }
 
-    @Field("d")
     public Date getD() {
         return d;
     }
@@ -113,7 +117,6 @@ public class RecordWithAllTypes implements Record {
         this.d = d;
     }
 
-    @Field("e")
     public Long getE() {
         return e;
     }
@@ -122,7 +125,6 @@ public class RecordWithAllTypes implements Record {
         this.e = e;
     }
 
-    @Field("f")
     public BigDecimal getF() {
         return f;
     }
@@ -131,7 +133,6 @@ public class RecordWithAllTypes implements Record {
         this.f = f;
     }
 
-    @Field("g")
     public EnumType getG() {
         return g;
     }
@@ -140,7 +141,6 @@ public class RecordWithAllTypes implements Record {
         this.g = g;
     }
 
-    @Field("h")
     public LocalDate getH() {
         return h;
     }
@@ -199,5 +199,13 @@ public class RecordWithAllTypes implements Record {
     @Override
     public int hashCode() {
         return Objects.hash(a, b, c, d, e, f, g, h);
+    }
+
+    @Override
+    public String toString() {
+        return "[ImmutableRecord: id=" + id
+                + " a=" + a + " b=" + b + " c=" + c + " d=" + d
+                + " e=" + e + " f=" + f + " g=" + g + " h=" + h
+                + "]";
     }
 }

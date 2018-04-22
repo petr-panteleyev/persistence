@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2017, Petr Panteleyev <petr@panteleyev.org>
+ * Copyright (c) 2017, 2018, Petr Panteleyev <petr@panteleyev.org>
  * All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
@@ -26,6 +26,11 @@
 
 package org.panteleyev.persistence.test.model;
 
+import org.panteleyev.persistence.Record;
+import org.panteleyev.persistence.annotations.Column;
+import org.panteleyev.persistence.annotations.Table;
+import org.panteleyev.persistence.test.Base;
+import org.panteleyev.persistence.test.EnumType;
 import java.math.BigDecimal;
 import java.time.LocalDate;
 import java.util.Date;
@@ -33,24 +38,28 @@ import java.util.Objects;
 import java.util.Optional;
 import java.util.Random;
 import java.util.UUID;
-import org.panteleyev.persistence.Record;
-import org.panteleyev.persistence.annotations.Field;
-import org.panteleyev.persistence.annotations.Table;
-import org.panteleyev.persistence.test.Base;
-import org.panteleyev.persistence.test.EnumType;
 
 @Table("optionals_table")
 public class RecordWithOptionals implements Record {
+    @Column(value = Column.ID, primaryKey = true)
     private Integer id;
 
     // fields
+    @Column("a")
     private String a;
+    @Column("b")
     private Integer b;
+    @Column("c")
     private Boolean c;
+    @Column("d")
     private Date d;
+    @Column("e")
     private Long e;
+    @Column("f")
     private BigDecimal f;
+    @Column("g")
     private EnumType g;
+    @Column("h")
     private LocalDate h;
 
     public RecordWithOptionals() {
@@ -68,7 +77,6 @@ public class RecordWithOptionals implements Record {
         this.h = h;
     }
 
-    @Field(value = Field.ID, primaryKey = true)
     @Override
     public int getId() {
         return id;
@@ -79,7 +87,6 @@ public class RecordWithOptionals implements Record {
         this.id = id;
     }
 
-    @Field("a")
     public Optional<String> getA() {
         return Optional.ofNullable(a);
     }
@@ -88,7 +95,6 @@ public class RecordWithOptionals implements Record {
         this.a = a;
     }
 
-    @Field("b")
     public Optional<Integer> getB() {
         return Optional.ofNullable(b);
     }
@@ -97,7 +103,6 @@ public class RecordWithOptionals implements Record {
         this.b = b;
     }
 
-    @Field("c")
     public Optional<Boolean> getC() {
         return Optional.ofNullable(c);
     }
@@ -106,7 +111,6 @@ public class RecordWithOptionals implements Record {
         this.c = c;
     }
 
-    @Field("d")
     public Optional<Date> getD() {
         return Optional.ofNullable(d);
     }
@@ -115,7 +119,6 @@ public class RecordWithOptionals implements Record {
         this.d = d;
     }
 
-    @Field("e")
     public Optional<Long> getE() {
         return Optional.ofNullable(e);
     }
@@ -124,7 +127,6 @@ public class RecordWithOptionals implements Record {
         this.e = e;
     }
 
-    @Field("f")
     public Optional<BigDecimal> getF() {
         return Optional.ofNullable(f);
     }
@@ -133,7 +135,6 @@ public class RecordWithOptionals implements Record {
         this.f = f;
     }
 
-    @Field("g")
     public Optional<EnumType> getG() {
         return Optional.ofNullable(g);
     }
@@ -142,7 +143,6 @@ public class RecordWithOptionals implements Record {
         this.g = g;
     }
 
-    @Field("h")
     public Optional<LocalDate> getH() {
         return Optional.ofNullable(h);
     }
@@ -150,7 +150,6 @@ public class RecordWithOptionals implements Record {
     public void setH(LocalDate h) {
         this.h = h;
     }
-
 
 
     public static RecordWithOptionals newRecord(Integer id, Random random) {
@@ -184,7 +183,7 @@ public class RecordWithOptionals implements Record {
     @Override
     public boolean equals(Object o) {
         if (o instanceof RecordWithOptionals) {
-            RecordWithOptionals that = (RecordWithOptionals)o;
+            RecordWithOptionals that = (RecordWithOptionals) o;
 
             return Objects.equals(this.id, that.id)
                     && Objects.equals(this.a, that.a)

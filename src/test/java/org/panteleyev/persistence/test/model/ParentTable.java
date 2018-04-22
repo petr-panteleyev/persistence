@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2017, Petr Panteleyev <petr@panteleyev.org>
+ * Copyright (c) 2017, 2018, Petr Panteleyev <petr@panteleyev.org>
  * All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
@@ -23,33 +23,34 @@
  * ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE
  * POSSIBILITY OF SUCH DAMAGE.
  */
+
 package org.panteleyev.persistence.test.model;
 
 import org.panteleyev.persistence.Record;
-import org.panteleyev.persistence.annotations.Field;
+import org.panteleyev.persistence.annotations.Column;
 import org.panteleyev.persistence.annotations.Index;
 import org.panteleyev.persistence.annotations.RecordBuilder;
 import org.panteleyev.persistence.annotations.Table;
 
 @Table("parent_table")
 public class ParentTable implements Record {
+    @Column(value = Column.ID, primaryKey = true)
     private int id;
+    @Column("value")
+    @Index(value = "value", unique = true)
     private String value;
 
     @RecordBuilder
-    public ParentTable(@Field("id") int id, @Field("value") String value) {
+    public ParentTable(@Column("id") int id, @Column("value") String value) {
         this.id = id;
         this.value = value;
     }
 
-    @Field(value = Field.ID, primaryKey = true)
     @Override
     public int getId() {
         return id;
     }
 
-    @Field("value")
-    @Index(value = "value", unique = true)
     public String getValue() {
         return value;
     }

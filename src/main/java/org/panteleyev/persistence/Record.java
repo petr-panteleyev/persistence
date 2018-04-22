@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2016, 2017, Petr Panteleyev <petr@panteleyev.org>
+ * Copyright (c) 2016, 2018, Petr Panteleyev <petr@panteleyev.org>
  * All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
@@ -23,6 +23,7 @@
  * ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE
  * POSSIBILITY OF SUCH DAMAGE.
  */
+
 package org.panteleyev.persistence;
 
 import org.panteleyev.persistence.annotations.Table;
@@ -63,7 +64,7 @@ public interface Record {
      * @throws IllegalStateException if class is not annotated by {@link Table}.
      */
     static String getTableName(Class<? extends Record> table) {
-        Table annotation = table.getAnnotation(Table.class);
+        var annotation = table.getAnnotation(Table.class);
         if (annotation != null) {
             return annotation.value();
         } else {

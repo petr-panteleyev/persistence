@@ -1,5 +1,11 @@
 # Change Log
 
+## [18.1.0] - 2018-04-22
+
+* Performance optimizations
+* Java 10
+* New annotations, incompatible with 3.2.1
+
 ## [3.2.1] - 2017-10-19
 
 * Java 9 module

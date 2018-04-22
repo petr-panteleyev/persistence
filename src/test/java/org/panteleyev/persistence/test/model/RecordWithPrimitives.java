@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2017, Petr Panteleyev <petr@panteleyev.org>
+ * Copyright (c) 2017, 2018, Petr Panteleyev <petr@panteleyev.org>
  * All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
@@ -26,17 +26,21 @@
 package org.panteleyev.persistence.test.model;
 
 import org.panteleyev.persistence.Record;
-import org.panteleyev.persistence.annotations.Field;
+import org.panteleyev.persistence.annotations.Column;
 import org.panteleyev.persistence.annotations.Table;
 import java.util.Objects;
 import java.util.Random;
 
 @Table("primitives_table")
 public class RecordWithPrimitives implements Record {
+    @Column(value = Column.ID, primaryKey = true)
     private Integer id;
 
+    @Column("a")
     private int a;
+    @Column("b")
     private boolean b;
+    @Column("c")
     private long c;
 
     public RecordWithPrimitives() {
@@ -50,7 +54,6 @@ public class RecordWithPrimitives implements Record {
         this.c = c;
     }
 
-    @Field(value = Field.ID, primaryKey = true)
     @Override
     public int getId() {
         return id;
@@ -61,7 +64,6 @@ public class RecordWithPrimitives implements Record {
         this.id = id;
     }
 
-    @Field(value = "a")
     public int getA() {
         return a;
     }
@@ -70,7 +72,6 @@ public class RecordWithPrimitives implements Record {
         this.a = a;
     }
 
-    @Field(value = "b")
     public boolean getB() {
         return b;
     }
@@ -79,7 +80,6 @@ public class RecordWithPrimitives implements Record {
         this.b = b;
     }
 
-    @Field(value = "c")
     public long getC() {
         return c;
     }
@@ -113,7 +113,7 @@ public class RecordWithPrimitives implements Record {
         }
 
         if (o instanceof RecordWithPrimitives) {
-            RecordWithPrimitives that = (RecordWithPrimitives)o;
+            RecordWithPrimitives that = (RecordWithPrimitives) o;
 
             return Objects.equals(this.id, that.id)
                     && Objects.equals(this.a, that.a)

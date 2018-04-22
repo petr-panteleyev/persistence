@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2017, Petr Panteleyev <petr@panteleyev.org>
+ * Copyright (c) 2017, 2018, Petr Panteleyev <petr@panteleyev.org>
  * All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
@@ -23,25 +23,27 @@
  * ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE
  * POSSIBILITY OF SUCH DAMAGE.
  */
+
 package org.panteleyev.persistence;
 
-import org.panteleyev.persistence.annotations.Field;
+import org.panteleyev.persistence.annotations.Column;
 import org.panteleyev.persistence.annotations.ForeignKey;
 import org.panteleyev.persistence.annotations.Index;
 import org.panteleyev.persistence.annotations.ReferenceOption;
 import org.panteleyev.persistence.annotations.Table;
-import java.lang.reflect.Method;
+import java.lang.reflect.Field;
 import java.math.BigDecimal;
 import java.sql.Connection;
 import java.sql.PreparedStatement;
 import java.sql.ResultSet;
 import java.sql.SQLException;
-import java.sql.Statement;
 import java.sql.Types;
 import java.time.LocalDate;
 import java.util.Date;
 import java.util.List;
+import java.util.Map;
 import java.util.Objects;
+import java.util.function.BiFunction;
 import static org.panteleyev.persistence.DAOTypes.BAD_FIELD_TYPE;
 import static org.panteleyev.persistence.DAOTypes.TYPE_BIG_DECIMAL;
 import static org.panteleyev.persistence.DAOTypes.TYPE_BOOL;
@@ -56,9 +58,97 @@ import static org.panteleyev.persistence.DAOTypes.TYPE_LONG_PRIM;
 import static org.panteleyev.persistence.DAOTypes.TYPE_STRING;
 
 interface DAOProxy {
-    Object getFieldValue(String fieldName, Class typeClass, ResultSet set) throws SQLException;
+    BiFunction<ResultSet, String, Object> OBJECT_READER = (ResultSet rs, String name) -> {
+        try {
+            return rs.getObject(name);
+        } catch (SQLException ex) {
+            throw new RuntimeException(ex);
+        }
+    };
 
-    String getColumnString(Field fld, ForeignKey foreignKey, String typeName, List<String> constraints);
+    BiFunction<ResultSet, String, Boolean> BOOL_READER = (ResultSet rs, String name) -> {
+        try {
+            return rs.getBoolean(name);
+        } catch (SQLException ex) {
+            throw new RuntimeException(ex);
+        }
+    };
+
+    BiFunction<ResultSet, String, Boolean> INT_BOOL_READER = (ResultSet rs, String name) -> {
+        try {
+            Object value = rs.getObject(name);
+            return value != null && ((int) value == 1);
+        } catch (SQLException ex) {
+            throw new RuntimeException(ex);
+        }
+    };
+
+    BiFunction<ResultSet, String, Boolean> INT_BOOLEAN_READER = (ResultSet rs, String name) -> {
+        try {
+            Object value = rs.getObject(name);
+            return value == null ? null : (int) value == 1;
+        } catch (SQLException ex) {
+            throw new RuntimeException(ex);
+        }
+    };
+
+    BiFunction<ResultSet, String, BigDecimal> BIG_DECIMAL_READER = (ResultSet rs, String name) -> {
+        try {
+            return rs.getBigDecimal(name);
+        } catch (SQLException ex) {
+            throw new RuntimeException(ex);
+        }
+    };
+
+    BiFunction<ResultSet, String, Integer> INT_READER = (ResultSet rs, String name) -> {
+        try {
+            return rs.getInt(name);
+        } catch (SQLException ex) {
+            throw new RuntimeException(ex);
+        }
+    };
+
+    BiFunction<ResultSet, String, Long> LONG_READER = (ResultSet rs, String name) -> {
+        try {
+            return rs.getLong(name);
+        } catch (SQLException ex) {
+            throw new RuntimeException(ex);
+        }
+    };
+
+    BiFunction<ResultSet, String, Date> DATE_READER = (ResultSet rs, String name) -> {
+        try {
+            return rs.getObject(name) == null ? null : new Date(rs.getLong(name));
+        } catch (SQLException ex) {
+            throw new RuntimeException(ex);
+        }
+    };
+
+    BiFunction<ResultSet, String, LocalDate> LOCAL_DATE_READER = (ResultSet rs, String name) -> {
+        try {
+            return rs.getObject(name) == null ? null : LocalDate.ofEpochDay(rs.getLong(name));
+        } catch (SQLException ex) {
+            throw new RuntimeException(ex);
+        }
+    };
+
+    default Object getFieldValue(String fieldName, Class typeClass, ResultSet set) throws SQLException {
+        if (typeClass.isEnum()) {
+            var value = set.getObject(fieldName);
+            return value == null ? null : Enum.valueOf(typeClass, (String) value);
+        }
+
+        var reader = getReaderMap().get(typeClass.getName());
+        if (reader == null) {
+            throw new IllegalStateException(BAD_FIELD_TYPE);
+        }
+
+        return reader.apply(set, fieldName);
+    }
+
+    Map<String, BiFunction<ResultSet, String, ?>> getReaderMap();
+
+    String getColumnString(Column fld, ForeignKey foreignKey, String typeName, List<String> constraints);
 
     void truncate(Connection connection, List<Class<? extends Record>> tables);
 
@@ -128,7 +218,7 @@ interface DAOProxy {
         }
     }
 
-    default String buildForeignKey(Field field, ForeignKey key) {
+    default String buildForeignKey(Column column, ForeignKey key) {
         Objects.requireNonNull(key);
 
         Class<?> parentTableClass = key.table();
@@ -136,13 +226,13 @@ interface DAOProxy {
             throw new IllegalStateException("Foreign key references not annotated table");
         }
 
-        String parentTableName = parentTableClass.getAnnotation(Table.class).value();
-        String parentFieldName = key.field();
+        var parentTableName = parentTableClass.getAnnotation(Table.class).value();
+        var parentFieldName = key.field();
 
-        StringBuilder fk = new StringBuilder();
+        var fk = new StringBuilder();
 
         fk.append("FOREIGN KEY (")
-                .append(field.value())
+                .append(column.value())
                 .append(") ")
                 .append("REFERENCES ")
                 .append(parentTableName)
@@ -151,23 +241,21 @@ interface DAOProxy {
                 .append(")");
 
         if (key.onUpdate() != ReferenceOption.NONE) {
-            fk.append(" ON UPDATE ")
-                    .append(key.onUpdate().toString());
+            fk.append(" ON UPDATE ").append(key.onUpdate().toString());
         }
 
         if (key.onDelete() != ReferenceOption.NONE) {
-            fk.append(" ON DELETE ")
-                    .append(key.onDelete().toString());
+            fk.append(" ON DELETE ").append(key.onDelete().toString());
         }
 
         return fk.toString();
     }
 
-    default String buildIndex(Table table, Method getter) {
-        Field field = getter.getAnnotation(Field.class);
-        Index index = getter.getAnnotation(Index.class);
+    default String buildIndex(Table table, Field field) {
+        var column = field.getAnnotation(Column.class);
+        var index = field.getAnnotation(Index.class);
 
-        StringBuilder b = new StringBuilder("CREATE ");
+        var b = new StringBuilder("CREATE ");
         if (index.unique()) {
             b.append("UNIQUE ");
         }
@@ -177,14 +265,14 @@ interface DAOProxy {
                 .append(" ON ")
                 .append(table.value())
                 .append(" (")
-                .append(field.value())
+                .append(column.value())
                 .append(")");
 
         return b.toString();
     }
 
     default void deleteAll(Connection connection, Class<? extends Record> table) {
-        try (Statement statement = connection.createStatement()) {
+        try (var statement = connection.createStatement()) {
             statement.execute("DELETE FROM " + Record.getTableName(table));
         } catch (SQLException ex) {
             throw new RuntimeException(ex);

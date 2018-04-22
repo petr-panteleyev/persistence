@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2017, Petr Panteleyev <petr@panteleyev.org>
+ * Copyright (c) 2017, 2018, Petr Panteleyev <petr@panteleyev.org>
  * All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
@@ -27,7 +27,7 @@
 package org.panteleyev.persistence.test.model;
 
 import org.panteleyev.persistence.Record;
-import org.panteleyev.persistence.annotations.Field;
+import org.panteleyev.persistence.annotations.Column;
 import org.panteleyev.persistence.annotations.ForeignKey;
 import org.panteleyev.persistence.annotations.RecordBuilder;
 import org.panteleyev.persistence.annotations.ReferenceOption;
@@ -35,23 +35,40 @@ import org.panteleyev.persistence.annotations.Table;
 
 @Table("child_table")
 public class ChildTable implements Record {
+    @Column(value = Column.ID, primaryKey = true)
     private int id;
 
+    @Column("null_value")
+    @ForeignKey(table = ParentTable.class, field = "value",
+            onDelete = ReferenceOption.SET_NULL, onUpdate = ReferenceOption.SET_NULL)
     private final String nullValue;
+
+    @Column("cascade_value")
+    @ForeignKey(table = ParentTable.class, field = "value",
+            onDelete = ReferenceOption.CASCADE, onUpdate = ReferenceOption.CASCADE)
     private final String cascadeValue;
+
+    @Column("restrict_value")
+    @ForeignKey(table = ParentTable.class, field = "value",
+            onDelete = ReferenceOption.RESTRICT, onUpdate = ReferenceOption.RESTRICT)
     private final String restrictValue;
+
+    @Column("no_action_value")
+    @ForeignKey(table = ParentTable.class, field = "value",
+            onDelete = ReferenceOption.NO_ACTION, onUpdate = ReferenceOption.NO_ACTION)
     private final String noActionValue;
+
+    @Column("none_value")
+    @ForeignKey(table = ParentTable.class, field = "value")
     private final String noneValue;
 
     @RecordBuilder
-    public ChildTable(
-            @Field("id") int id,
-            @Field("null_value") String nullValue,
-            @Field("cascade_value") String cascadeValue,
-            @Field("restrict_value") String restrictValue,
-            @Field("no_action_value") String noActionValue,
-            @Field("none_value") String noneValue
-    ) {
+    public ChildTable(@Column("id") int id,
+                      @Column("null_value") String nullValue,
+                      @Column("cascade_value") String cascadeValue,
+                      @Column("restrict_value") String restrictValue,
+                      @Column("no_action_value") String noActionValue,
+                      @Column("none_value") String noneValue) {
         this.id = id;
         this.nullValue = nullValue;
         this.cascadeValue = cascadeValue;
@@ -60,42 +77,27 @@ public class ChildTable implements Record {
         this.noneValue = noneValue;
     }
 
-    @Field(value = Field.ID, primaryKey = true)
     @Override
     public int getId() {
         return id;
     }
 
-    @Field(value="null_value")
-    @ForeignKey(table = ParentTable.class, field = "value",
-            onDelete = ReferenceOption.SET_NULL, onUpdate = ReferenceOption.SET_NULL)
     public String getNullValue() {
         return nullValue;
     }
 
-    @Field(value="cascade_value")
-    @ForeignKey(table = ParentTable.class, field = "value",
-            onDelete = ReferenceOption.CASCADE, onUpdate = ReferenceOption.CASCADE)
     public String getCascadeValue() {
         return cascadeValue;
     }
 
-    @Field("restrict_value")
-    @ForeignKey(table = ParentTable.class, field = "value",
-            onDelete = ReferenceOption.RESTRICT, onUpdate = ReferenceOption.RESTRICT)
     public String getRestrictValue() {
         return restrictValue;
     }
 
-    @Field(value="no_action_value")
-    @ForeignKey(table = ParentTable.class, field = "value",
-            onDelete = ReferenceOption.NO_ACTION, onUpdate = ReferenceOption.NO_ACTION)
     public String getNoActionValue() {
         return noActionValue;
     }
 
-    @Field(value="none_value")
-    @ForeignKey(table=ParentTable.class, field = "value")
     public String getNoneValue() {
         return noneValue;
     }

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2017, Petr Panteleyev <petr@panteleyev.org>
+ * Copyright (c) 2017, 2018, Petr Panteleyev <petr@panteleyev.org>
  * All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
@@ -23,6 +23,7 @@
  * ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE
  * POSSIBILITY OF SUCH DAMAGE.
  */
+
 package org.panteleyev.persistence.annotations;
 
 import java.lang.annotation.ElementType;
@@ -34,28 +35,32 @@ import java.lang.annotation.Target;
  * Defines foreign key.
  */
 @Retention(RetentionPolicy.RUNTIME)
-@Target(ElementType.METHOD)
+@Target(ElementType.FIELD)
 public @interface ForeignKey {
     /**
      * Referenced table class. This must be a class annotated by {@link Table}.
+     *
      * @return table class
      */
     Class table();
 
     /**
      * Referenced field.
+     *
      * @return field name
      */
-    String field() default Field.ID;
+    String field() default Column.ID;
 
     /**
      * ON DELETE reference option.
+     *
      * @return reference option
      */
     ReferenceOption onDelete() default ReferenceOption.NONE;
 
     /**
      * ON UPDATE reference option.
+     *
      * @return reference option
      */
     ReferenceOption onUpdate() default ReferenceOption.NONE;

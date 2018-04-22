@@ -22,17 +22,29 @@
  {@link org.panteleyev.persistence.DAO#preload} first.
  </p>
 
- <p style="font-size: large;"><strong>Mutable Objects</strong></p>
 
- <p>Mutable objects must implement appropriate setters following JavaBean specification.</p>
+ <p style="font-size: large;"><strong>Deserialization</strong></p>
+
+ <p>
+ API supports two ways of object deserialization: by constructor and direct field assignment. Constructor must be
+ used for objects with final fields or in case of additional initialization.
+ </p>
+
+ <p><strong>Field Assignment</strong></p>
+
+ <p>
+ There must be no-argument constructor, either default or explicit. Setters are not used, i.e. there is no way
+ to define additional deserialization logic in case of field assignment.
+ </p>
 
   <pre><code>
 {@literal @}Table("book")
 class Book implements Record {
+    {@literal @}Column(value = Column.ID, primaryKey = true)
     private int id;
+    {@literal @}Column("title")
     private String title;
 
-    {@literal @}Field(value = Field.ID, primaryKey = true)
     public int getId() {
         return id;
     }
@@ -41,7 +53,6 @@ class Book implements Record {
         this.id = id;
     }
 
-    {@literal @}Field("title")
     public String getTitle() {
         return title
     }
@@ -52,29 +63,31 @@ class Book implements Record {
 }
  </code></pre>
 
- <p style="font-size: large;"><strong>Immutable Objects</strong></p>
+ <p><strong>Constructor</strong></p>
 
- <p>Immutable objects are supported by annotation {@link org.panteleyev.persistence.annotations.RecordBuilder}
- as shown below.</p>
+ <p>
+ Constructor deserialization is triggered by {@link org.panteleyev.persistence.annotations.RecordBuilder}
+ as shown below. Such constructor must have parameters corresponding to table columns.
+ </p>
 
  <pre><code>
 {@literal @}Table("book")
 class Book implements Record {
+    {@literal @}Column(value = Field.ID, primaryKey = true)
     private final int id;
+    {@literal @}Column("title")
     private final String title;
 
     {@literal @}RecordBuilder
-    public Book ({@literal @}Field(Field.ID) int id, {@literal @}Field("title") String title) {
+    public Book ({@literal @}Column(Column.ID) int id, {@literal @}Column("title") String title) {
         this.id = id;
         this.title = title;
     }
 
-    {@literal @}Field(value = Field.ID, primaryKey = true)
     public int getId() {
         return id;
     }
 
-    {@literal @}Field("title")
     public String getTitle() {
         return title
     }
@@ -86,21 +99,21 @@ class Book implements Record {
  <p>The following data types are supported:</p>
 
  <table border="1">
- <caption></caption>
+ <caption>Data Types</caption>
  <tr><th>Java</th><th>SQLite</th><th>MySQL</th><th>Comment</th></tr>
  <tr><td>int<br>{@link java.lang.Integer}</td><td>INTEGER</td><td>INTEGER</td><td></td></tr>
  <tr><td>long<br>{@link java.lang.Long}</td><td>INTEGER</td><td>BIGINT</td><td></td></tr>
  <tr><td>bool<br>{@link java.lang.Boolean}</td><td>BOOLEAN</td><td>BOOLEAN</td><td></td></tr>
  <tr>
  <td>{@link java.lang.String}</td>
- <td>VARCHAR ( {@link org.panteleyev.persistence.annotations.Field#length} )</td>
- <td>VARCHAR ( {@link org.panteleyev.persistence.annotations.Field#length} )</td>
+ <td>VARCHAR ( {@link org.panteleyev.persistence.annotations.Column#length} )</td>
+ <td>VARCHAR ( {@link org.panteleyev.persistence.annotations.Column#length} )</td>
  <td></td>
  </tr>
  <tr>
  <td>{@link java.math.BigDecimal}</td>
- <td>VARCHAR ( {@link org.panteleyev.persistence.annotations.Field#precision} + 1 )</td>
- <td>DECIMAL ( {@link org.panteleyev.persistence.annotations.Field#precision}, {@link org.panteleyev.persistence.annotations.Field#scale} )</td>
+ <td>VARCHAR ( {@link org.panteleyev.persistence.annotations.Column#precision} + 1 )</td>
+ <td>DECIMAL ( {@link org.panteleyev.persistence.annotations.Column#precision}, {@link org.panteleyev.persistence.annotations.Column#scale} )</td>
  <td>
  MySQL representation does not guarantee that retrieved value will be equal to original one by means of
  {@link java.lang.Object#equals}. Use {@link java.math.BigDecimal#compareTo} instead.
@@ -125,12 +138,10 @@ class Book implements Record {
  <pre><code>
 {@literal @}Table("parent_table")
 public class ParentTable implements Record {
-    // ...
-
+    {@literal @}Column("data")
+    {@literal @}Index(value = "data", unique = true)
     private String data;
 
-    {@literal @}Field("data")
-    {@literal @}Index(value = "data", unique = true)
     public String getData() {
         return data;
     }
@@ -142,11 +153,11 @@ public class ParentTable implements Record {
  <pre><code>
 {@literal @}Table("child_table")
 public class ChildTable implements Record {
-    // ...
-
-    {@literal @}Field("parent_data")
+    {@literal @}Column("parent_data")
     {@literal @}ForeignKey(table = ParentTable.class, field = "data",
         onDelete = ReferenceOption.RESTRICT, onUpdate = ReferenceOption.CASCADE)
+    private final String parentData;
+
     public String getParentData() {
         return parentData;
     }
@@ -159,7 +170,6 @@ public class ChildTable implements Record {
 
 
  @see <a href="https://dev.mysql.com/doc/refman/5.7/en/data-types.html">MySQL Data Types</a>
- @see <a href="http://download.oracle.com/otn-pub/jcp/7224-javabeans-1.01-fr-spec-oth-JSpec/beans.101.pdf">Java Beans Specification</a>
 
  */
 module org.panteleyev.persistence {
@@ -167,6 +177,8 @@ module org.panteleyev.persistence {
     requires java.sql;
     requires java.desktop;
     requires java.naming;
+
+    requires jdk.unsupported;
 
     exports org.panteleyev.persistence;
     exports org.panteleyev.persistence.annotations;

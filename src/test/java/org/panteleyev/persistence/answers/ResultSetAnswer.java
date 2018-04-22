@@ -23,18 +23,29 @@
  * ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE
  * POSSIBILITY OF SUCH DAMAGE.
  */
-package org.panteleyev.persistence.annotations;
 
-import java.lang.annotation.ElementType;
-import java.lang.annotation.Retention;
-import java.lang.annotation.RetentionPolicy;
-import java.lang.annotation.Target;
+package org.panteleyev.persistence.answers;
 
-/**
- * Defines constructor used for record retrieval. All parameters of such constructor must be annotated with
- * {@link Column} annotation.
- */
-@Retention(RetentionPolicy.RUNTIME)
-@Target(ElementType.CONSTRUCTOR)
-public @interface RecordBuilder {
+import java.lang.reflect.Field;
+import java.util.HashMap;
+import java.util.Map;
+
+abstract class ResultSetAnswer {
+    private final Map<String, Object> valueMap = new HashMap<>();
+
+    ResultSetAnswer(Object object) {
+        for (Field field : object.getClass().getDeclaredFields()) {
+            field.setAccessible(true);
+
+            try {
+                valueMap.put(field.getName(), field.get(object));
+            } catch (Exception ex) {
+                throw new RuntimeException(ex);
+            }
+        }
+    }
+
+    Object getValue(String fieldName) {
+        return valueMap.get(fieldName);
+    }
 }

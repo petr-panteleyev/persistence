@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2017, Petr Panteleyev <petr@panteleyev.org>
+ * Copyright (c) 2017, 2018, Petr Panteleyev <petr@panteleyev.org>
  * All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
@@ -27,12 +27,13 @@
 package org.panteleyev.persistence.test.model;
 
 import org.panteleyev.persistence.Record;
-import org.panteleyev.persistence.annotations.Field;
+import org.panteleyev.persistence.annotations.Column;
 import org.panteleyev.persistence.annotations.RecordBuilder;
 import org.panteleyev.persistence.annotations.Table;
 import org.panteleyev.persistence.test.Base;
 import org.panteleyev.persistence.test.EnumType;
 import java.math.BigDecimal;
+import java.math.RoundingMode;
 import java.time.LocalDate;
 import java.util.Date;
 import java.util.Objects;
@@ -41,30 +42,40 @@ import java.util.UUID;
 
 @Table("immutable_table")
 public class ImmutableRecord implements Record {
+    @Column(value = Column.ID, primaryKey = true)
     private final Integer id;
 
     // fields
+    // Tests may assume annotations use the same names
+    @Column("a")
     private final String a;
+    @Column("b")
     private final Integer b;
+    @Column("c")
     private final Boolean c;
+    @Column("d")
     private final Date d;
+    @Column("e")
     private final Long e;
+    @Column("f")
     private final BigDecimal f;
+    @Column("g")
     private final EnumType g;
+    @Column("h")
     private final LocalDate h;
 
+    private final Integer b2;
+
     @RecordBuilder
-    public ImmutableRecord(
-            @Field("id") Integer id,
-            @Field("a") String a,
-            @Field("b") Integer b,
-            @Field("c") Boolean c,
-            @Field("d") Date d,
-            @Field("e") Long e,
-            @Field("f") BigDecimal f,
-            @Field("g") EnumType g,
-            @Field("h") LocalDate h
-    ) {
+    public ImmutableRecord(@Column("id") Integer id,
+                           @Column("a") String a,
+                           @Column("b") Integer b,
+                           @Column("c") Boolean c,
+                           @Column("d") Date d,
+                           @Column("e") Long e,
+                           @Column("f") BigDecimal f,
+                           @Column("g") EnumType g,
+                           @Column("h") LocalDate h) {
         this.id = id;
         this.a = a;
         this.b = b;
@@ -74,52 +85,49 @@ public class ImmutableRecord implements Record {
         this.f = f;
         this.g = g;
         this.h = h;
+
+        b2 = b == null ? null : b + b;
     }
 
-    @Field(value = Field.ID, primaryKey = true)
     @Override
     public int getId() {
         return id;
     }
 
-    @Field("a")
     public String getA() {
         return a;
     }
 
-    @Field("b")
     public Integer getB() {
         return b;
     }
 
-    @Field("c")
     public Boolean getC() {
         return c;
     }
 
-    @Field("d")
     public Date getD() {
         return d;
     }
 
-    @Field("e")
     public Long getE() {
         return e;
     }
 
-    @Field("f")
     public BigDecimal getF() {
         return f;
     }
 
-    @Field("g")
     public EnumType getG() {
         return g;
     }
 
-    @Field("h")
     public LocalDate getH() {
         return h;
+    }
+
+    public Integer getB2() {
+        return b2;
     }
 
     public static ImmutableRecord newRecord(Integer id, Random random) {
@@ -130,7 +138,7 @@ public class ImmutableRecord implements Record {
                 random.nextBoolean(),
                 new Date(),
                 random.nextLong(),
-                BigDecimal.TEN,
+                new BigDecimal(random.nextDouble()).setScale(6, RoundingMode.HALF_UP),
                 EnumType.F1,
                 LocalDate.now()
         );
@@ -153,7 +161,7 @@ public class ImmutableRecord implements Record {
     @Override
     public boolean equals(Object o) {
         if (o instanceof ImmutableRecord) {
-            ImmutableRecord that = (ImmutableRecord)o;
+            ImmutableRecord that = (ImmutableRecord) o;
 
             return Objects.equals(this.id, that.id)
                     && Objects.equals(this.a, that.a)
@@ -163,7 +171,8 @@ public class ImmutableRecord implements Record {
                     && Objects.equals(this.e, that.e)
                     && Base.compareBigDecimals(this.f, that.f)
                     && Objects.equals(this.g, that.g)
-                    && Objects.equals(this.h, that.h);
+                    && Objects.equals(this.h, that.h)
+                    && Objects.equals(this.b2, that.b2);
         } else {
             return false;
         }
@@ -171,6 +180,15 @@ public class ImmutableRecord implements Record {
 
     @Override
     public int hashCode() {
-        return Objects.hash(a, b, c, d, e, f, g, h);
+        return Objects.hash(a, b, c, d, e, f, g, h, b2);
+    }
+
+    @Override
+    public String toString() {
+        return "[ImmutableRecord: id=" + id
+                + " a=" + a + " b=" + b + " c=" + c + " d=" + d
+                + " e=" + e + " f=" + f + " g=" + g + " h=" + h
+                + " b2=" + b2
+                + "]";
     }
 }

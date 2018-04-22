@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2017, Petr Panteleyev <petr@panteleyev.org>
+ * Copyright (c) 2017, 2018, Petr Panteleyev <petr@panteleyev.org>
  * All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
@@ -26,7 +26,7 @@
 package org.panteleyev.persistence.test.model;
 
 import org.panteleyev.persistence.Record;
-import org.panteleyev.persistence.annotations.Field;
+import org.panteleyev.persistence.annotations.Column;
 import org.panteleyev.persistence.annotations.RecordBuilder;
 import org.panteleyev.persistence.annotations.Table;
 import java.util.Objects;
@@ -34,42 +34,40 @@ import java.util.Random;
 
 @Table("immutable_primitives_table")
 public class ImmutableRecordWithPrimitives implements Record {
+    @Column(value = Column.ID, primaryKey = true)
     private Integer id;
 
+    @Column("a")
     private final int a;
+    @Column("b")
     private final boolean b;
+    @Column("c")
     private final long c;
 
     @RecordBuilder
-    public  ImmutableRecordWithPrimitives(
-            @Field("id") Integer id,
-            @Field("a") int a,
-            @Field("b") boolean b,
-            @Field("c") long c
-    ) {
+    public ImmutableRecordWithPrimitives(@Column("id") Integer id,
+                                         @Column("a") int a,
+                                         @Column("b") boolean b,
+                                         @Column("c") long c) {
         this.id = id;
         this.a = a;
         this.b = b;
         this.c = c;
     }
 
-    @Field(value = Field.ID, primaryKey = true)
     @Override
     public int getId() {
         return id;
     }
 
-    @Field("a")
     public int getA() {
         return a;
     }
 
-    @Field("b")
     public boolean getB() {
         return b;
     }
 
-    @Field("c")
     public long getC() {
         return c;
     }
@@ -99,7 +97,7 @@ public class ImmutableRecordWithPrimitives implements Record {
         }
 
         if (o instanceof ImmutableRecordWithPrimitives) {
-            ImmutableRecordWithPrimitives that = (ImmutableRecordWithPrimitives)o;
+            ImmutableRecordWithPrimitives that = (ImmutableRecordWithPrimitives) o;
 
             return Objects.equals(this.id, that.id)
                     && Objects.equals(this.a, that.a)

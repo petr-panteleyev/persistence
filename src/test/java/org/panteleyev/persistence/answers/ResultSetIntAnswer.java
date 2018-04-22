@@ -23,18 +23,23 @@
  * ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE
  * POSSIBILITY OF SUCH DAMAGE.
  */
-package org.panteleyev.persistence.annotations;
 
-import java.lang.annotation.ElementType;
-import java.lang.annotation.Retention;
-import java.lang.annotation.RetentionPolicy;
-import java.lang.annotation.Target;
+package org.panteleyev.persistence.answers;
 
-/**
- * Defines constructor used for record retrieval. All parameters of such constructor must be annotated with
- * {@link Column} annotation.
- */
-@Retention(RetentionPolicy.RUNTIME)
-@Target(ElementType.CONSTRUCTOR)
-public @interface RecordBuilder {
+import org.mockito.invocation.InvocationOnMock;
+import org.mockito.stubbing.Answer;
+import java.time.LocalDate;
+import java.util.Date;
+
+public class ResultSetIntAnswer extends ResultSetAnswer implements Answer<Integer> {
+    public ResultSetIntAnswer(Object object) {
+        super(object);
+    }
+
+    @Override
+    public Integer answer(InvocationOnMock inv) {
+        String fieldName = (String) inv.getArguments()[0];
+        Object result = getValue(fieldName);
+        return result == null ? 0 : (Integer) result;
+    }
 }

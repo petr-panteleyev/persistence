@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2016, 2017, Petr Panteleyev <petr@panteleyev.org>
+ * Copyright (c) 2016, 2018, Petr Panteleyev <petr@panteleyev.org>
  * All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
@@ -23,46 +23,47 @@
  * ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE
  * POSSIBILITY OF SUCH DAMAGE.
  */
+
 package org.panteleyev.persistence;
 
-import org.panteleyev.persistence.annotations.Field;
+import org.panteleyev.persistence.annotations.Column;
 import org.panteleyev.persistence.annotations.ForeignKey;
 import org.panteleyev.persistence.annotations.Index;
 import org.panteleyev.persistence.annotations.RecordBuilder;
 import org.panteleyev.persistence.annotations.Table;
+import sun.misc.Unsafe;
 import javax.sql.DataSource;
-import java.beans.BeanInfo;
-import java.beans.IntrospectionException;
-import java.beans.Introspector;
-import java.beans.PropertyDescriptor;
-import java.lang.annotation.Annotation;
 import java.lang.reflect.Constructor;
-import java.lang.reflect.InvocationTargetException;
-import java.lang.reflect.Method;
-import java.lang.reflect.ParameterizedType;
-import java.lang.reflect.Type;
+import java.lang.reflect.Field;
 import java.sql.Connection;
 import java.sql.PreparedStatement;
 import java.sql.ResultSet;
 import java.sql.SQLException;
-import java.sql.Statement;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collection;
+import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
-import java.util.Optional;
-import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.stream.Collectors;
-import static org.panteleyev.persistence.DAOTypes.BAD_FIELD_TYPE;
 import static org.panteleyev.persistence.DAOTypes.TYPE_ENUM;
 
 /**
  * Persistence API entry point.
  */
 public class DAO {
+    static class FieldRecord {
+        public final Class<?> type;
+        public final long offset;
+
+        public FieldRecord(Class<?> type, long offset) {
+            this.type = type;
+            this.offset = offset;
+        }
+    }
+
     private static final String NOT_ANNOTATED = "Class is not properly annotated";
 
     private final Map<Class<? extends Record>, Integer> primaryKeys = new ConcurrentHashMap<>();
@@ -70,11 +71,27 @@ public class DAO {
     private final Map<Class<? extends Record>, String> updateSQL = new ConcurrentHashMap<>();
     private final Map<Class<? extends Record>, String> deleteSQL = new ConcurrentHashMap<>();
 
+    private static final Unsafe UNSAFE;
+
+    // Cached builder constructors
+    private final Map<Class<? extends Record>, Constructor<?>> constructorMap =
+            new ConcurrentHashMap<>();
+    private final Map<Constructor<?>, List<String>> constructorFieldsMap =
+            new ConcurrentHashMap<>();
+
+    // Cached columns
+    private final Map<Class<? extends Record>, Map<String, FieldRecord>> columnMap = new ConcurrentHashMap<>();
+
     private DataSource datasource;
 
     private DAOProxy proxy;
 
     public DAO() {
+    }
+
+    // Test only
+    DAO(DAOProxy proxy) {
+        this.proxy = proxy;
     }
 
     public DAO(DataSource ds) {
@@ -107,7 +124,7 @@ public class DAO {
     private DAOProxy setupProxy() {
         // TODO: figure out better way instead of class name check
         if (datasource != null) {
-            String dsClass = datasource.getClass().getName().toLowerCase();
+            var dsClass = datasource.getClass().getName().toLowerCase();
 
             if (dsClass.contains("mysql")) {
                 return new MySQLProxy();
@@ -142,29 +159,30 @@ public class DAO {
      * @return record
      */
     public <T extends Record> T get(Integer id, Class<? extends T> clazz) {
-        try (Connection conn = getDataSource().getConnection()) {
+        try (var conn = getDataSource().getConnection()) {
             if (!clazz.isAnnotationPresent(Table.class)) {
                 throw new IllegalStateException(NOT_ANNOTATED);
             }
-            Table ann = clazz.getAnnotation(Table.class);
+            var ann = clazz.getAnnotation(Table.class);
 
-            String tableName = ann.value();
-            String idName = Field.ID;
+            var tableName = ann.value();
+            var idName = Column.ID;
 
-            for (Method method : clazz.getMethods()) {
-                Field fieldAnn = method.getAnnotation(Field.class);
+            for (var field : clazz.getDeclaredFields()) {
+                var fieldAnn = field.getAnnotation(Column.class);
                 if (fieldAnn != null && fieldAnn.primaryKey()) {
                     idName = fieldAnn.value();
                     break;
                 }
             }
 
-            String sql = "SELECT * FROM " + tableName + " WHERE " + idName + "=?";
-            PreparedStatement ps = conn.prepareStatement(sql);
+            var sql = "SELECT * FROM " + tableName + " WHERE " + idName + "=?";
+            var ps = conn.prepareStatement(sql);
             ps.setInt(1, id);
-            ResultSet set = ps.executeQuery();
 
-            return (set.next()) ? fromSQL(set, clazz) : null;
+            try (var set = ps.executeQuery()) {
+                return (set.next()) ? fromSQL(set, clazz) : null;
+            }
         } catch (SQLException ex) {
             throw new RuntimeException(ex);
         }
@@ -178,18 +196,19 @@ public class DAO {
      * @return list of records
      */
     public <T extends Record> List<T> getAll(Class<T> clazz) {
-        List<T> result = new ArrayList<>();
+        var result = new ArrayList<T>();
 
-        try (Connection conn = getDataSource().getConnection()) {
+        try (var conn = getDataSource().getConnection()) {
             if (!clazz.isAnnotationPresent(Table.class)) {
                 throw new IllegalStateException(NOT_ANNOTATED);
             }
 
-            String tableName = clazz.getAnnotation(Table.class).value();
-            PreparedStatement ps = conn.prepareStatement("SELECT * FROM " + tableName);
-            ResultSet set = ps.executeQuery();
-            while (set.next()) {
-                result.add(fromSQL(set, clazz));
+            var tableName = clazz.getAnnotation(Table.class).value();
+            var ps = conn.prepareStatement("SELECT * FROM " + tableName);
+            try (var set = ps.executeQuery()) {
+                while (set.next()) {
+                    result.add(fromSQL(set, clazz));
+                }
             }
         } catch (SQLException ex) {
             throw new RuntimeException(ex);
@@ -205,105 +224,102 @@ public class DAO {
      * @param result map to fill
      */
     public <T extends Record> void getAll(Class<T> clazz, Map<Integer, T> result) {
-        try (Connection conn = getDataSource().getConnection()) {
+        try (var conn = getDataSource().getConnection()) {
             if (!clazz.isAnnotationPresent(Table.class)) {
                 throw new IllegalStateException(NOT_ANNOTATED);
             }
 
-            String tableName = clazz.getAnnotation(Table.class).value();
-            PreparedStatement ps = conn.prepareStatement("SELECT * FROM " + tableName);
-            ResultSet set = ps.executeQuery();
-            while (set.next()) {
-                T r = fromSQL(set, clazz);
-                result.put(r.getId(), r);
+            var tableName = clazz.getAnnotation(Table.class).value();
+            var ps = conn.prepareStatement("SELECT * FROM " + tableName);
+            try (var set = ps.executeQuery()) {
+                while (set.next()) {
+                    T r = fromSQL(set, clazz);
+                    result.put(r.getId(), r);
+                }
             }
         } catch (SQLException ex) {
             throw new RuntimeException(ex);
         }
     }
 
-    private <T extends Record> T fromSQL(ResultSet set, Class<T> clazz) {
-        try {
-            // First try to find @RecordBuilder constructor
-            for (Constructor<?> constructor : clazz.getConstructors()) {
-                if (constructor.isAnnotationPresent(RecordBuilder.class)) {
-                    return fromSQL(set, constructor);
-                }
+    static Map<String, FieldRecord> computeColumns(Class<? extends Record> clazz) {
+        var result = new HashMap<String, FieldRecord>();
+        for (var field : clazz.getDeclaredFields()) {
+            var column = field.getAnnotation(Column.class);
+            if (column != null) {
+                result.put(column.value(), new FieldRecord(field.getType(), UNSAFE.objectFieldOffset(field)));
             }
-
-            T result = clazz.newInstance();
-            fromSQL(set, result);
-            return result;
-        } catch (InstantiationException | IllegalAccessException | InvocationTargetException | SQLException e) {
-            throw new RuntimeException(e);
         }
+        return result;
     }
 
-    private <T extends Record> T fromSQL(ResultSet set, Constructor<?> constructor) throws SQLException, IllegalAccessException, InvocationTargetException, InstantiationException {
-        int paramCount = constructor.getParameterCount();
 
-        Annotation[][] paramAnnotations = constructor.getParameterAnnotations();
-        Class<?>[] paramTypes = constructor.getParameterTypes();
-        Object[] params = new Object[paramCount];
+    private void fromSQL(ResultSet set, Record record, Map<String, FieldRecord> columns) throws SQLException {
+        for (var entry : columns.entrySet()) {
+            var fieldRecord = entry.getValue();
+            var value = proxy.getFieldValue(entry.getKey(), fieldRecord.type, set);
 
-        for (int i = 0; i < paramCount; i++) {
-            String fieldName = Arrays.stream(paramAnnotations[i])
-                    .filter(a -> a instanceof Field)
-                    .findAny()
-                    .map(a -> ((Field) a).value())
-                    .orElseThrow(RuntimeException::new);
-
-            params[i] = proxy.getFieldValue(fieldName, paramTypes[i], set);
+            switch (fieldRecord.type.getName()) {
+                case "int":
+                    UNSAFE.putInt(record, fieldRecord.offset, value == null ? 0 : (int) value);
+                    break;
+                case "long":
+                    UNSAFE.putLong(record, fieldRecord.offset, value == null ? 0L : (long) value);
+                    break;
+                case "boolean":
+                    UNSAFE.putBoolean(record, fieldRecord.offset, value != null && (boolean) value);
+                    break;
+                default:
+                    UNSAFE.putObject(record, fieldRecord.offset, value);
+                    break;
+            }
         }
-
-        return (T) constructor.newInstance(params);
+        UNSAFE.fullFence();
     }
 
-    private void fromSQL(ResultSet set, Record record) throws SQLException {
+    private <T extends Record> T fromSQL(ResultSet set, Constructor<?> constructor) {
+        var fieldNames = constructorFieldsMap.computeIfAbsent(constructor, DAO::computeParameters);
+
+        var paramTypes = constructor.getParameterTypes();
+        var params = new Object[fieldNames.size()];
+
         try {
-            BeanInfo bi = Introspector.getBeanInfo(record.getClass());
-            PropertyDescriptor[] pds = bi.getPropertyDescriptors();
-            for (PropertyDescriptor pd : pds) {
-                Method getter = pd.getReadMethod();
-                Method setter = pd.getWriteMethod();
-
-                Class getterClass = getter.getReturnType();
-                if (getterClass.equals(Optional.class)) {
-                    getterClass = getEffectiveType(getter);
-
-                    String setterName = getter.getName().replace("get", "set");
-                    for (Method m : record.getClass().getDeclaredMethods()) {
-                        if (m.getParameterCount() == 1 && m.getName().equals(setterName)) {
-                            setter = m;
-                            break;
-                        }
-                    }
-                }
-
-                if (setter != null) {
-                    Field fld = getter.getAnnotation(Field.class);
-                    if (fld != null) {
-                        setter.invoke(record, proxy.getFieldValue(fld.value(), getterClass, set));
-                    }
-                }
+            for (int i = 0; i < fieldNames.size(); i++) {
+                params[i] = proxy.getFieldValue(fieldNames.get(i), paramTypes[i], set);
             }
+
+            //noinspection unchecked
+            return (T) constructor.newInstance(params);
         } catch (Exception ex) {
             throw new RuntimeException(ex);
         }
     }
 
-    private Class getEffectiveType(Method getter) {
-        Type rType = getter.getGenericReturnType();
-
-        if (rType instanceof ParameterizedType) {
-            Type[] actualTypeArguments = ((ParameterizedType) rType).getActualTypeArguments();
-            if (actualTypeArguments.length != 1) {
-                throw new IllegalStateException(BAD_FIELD_TYPE);
-            } else {
-                return (Class) actualTypeArguments[0];
+    <T extends Record> T fromSQL(ResultSet set, Class<T> clazz) {
+        var builder = constructorMap.computeIfAbsent(clazz, keyClass -> {
+            for (var constructor : keyClass.getConstructors()) {
+                if (constructor.isAnnotationPresent(RecordBuilder.class)) {
+                    return constructor;
+                }
             }
-        } else {
-            return (Class) rType;
+            return null;
+        });
+
+        try {
+            if (builder != null) {
+                return fromSQL(set, builder);
+            } else {
+                var columns = columnMap.computeIfAbsent(clazz, DAO::computeColumns);
+                if (columns.isEmpty()) {
+                    throw new IllegalStateException("Class " + clazz.getName() + " has no column annotations");
+                }
+
+                T result = clazz.getDeclaredConstructor().newInstance();
+                fromSQL(set, result, columns);
+                return result;
+            }
+        } catch (Exception ex) {
+            throw new RuntimeException(ex);
         }
     }
 
@@ -317,43 +333,38 @@ public class DAO {
             throw new IllegalStateException("Database not opened");
         }
 
-        try (Connection conn = getDataSource().getConnection(); Statement st = conn.createStatement()) {
+        try (var conn = getDataSource().getConnection(); var st = conn.createStatement()) {
             // Step 1: drop tables in reverse order
             for (int index = tables.size() - 1; index >= 0; index--) {
-                Class<?> cl = tables.get(index);
+                var cl = tables.get(index);
                 if (!cl.isAnnotationPresent(Table.class)) {
                     throw new IllegalStateException(NOT_ANNOTATED);
                 }
 
-                Table table = cl.getAnnotation(Table.class);
+                var table = cl.getAnnotation(Table.class);
                 st.executeUpdate("DROP TABLE IF EXISTS " + table.value());
             }
 
             // Step 2: create new tables in natural order
             for (Class<?> cl : tables) {
-                Table table = cl.getAnnotation(Table.class);
+                var table = cl.getAnnotation(Table.class);
 
                 try {
-                    StringBuilder b = new StringBuilder("CREATE TABLE IF NOT EXISTS ")
+                    var b = new StringBuilder("CREATE TABLE IF NOT EXISTS ")
                             .append(table.value())
                             .append(" (");
 
-                    BeanInfo bi = Introspector.getBeanInfo(cl);
-                    PropertyDescriptor[] pds = bi.getPropertyDescriptors();
-
-                    List<String> constraints = new ArrayList<>();
-
-                    Set<Method> indexed = new HashSet<>();
+                    var constraints = new ArrayList<String>();
+                    var indexed = new HashSet<Field>();
 
                     boolean first = true;
-                    for (PropertyDescriptor pd : pds) {
-                        Method getter = pd.getReadMethod();
-                        if (getter != null && getter.isAnnotationPresent(Field.class)) {
-                            Field fld = getter.getAnnotation(Field.class);
-                            String fName = fld.value();
+                    for (var field : cl.getDeclaredFields()) {
+                        if (field.isAnnotationPresent(Column.class)) {
+                            var column = field.getAnnotation(Column.class);
+                            var fName = column.value();
 
-                            Class getterType = getEffectiveType(getter);
-                            String typeName = getterType.isEnum() ?
+                            var getterType = field.getType();
+                            var typeName = getterType.isEnum() ?
                                     TYPE_ENUM : getterType.getTypeName();
 
                             if (!first) {
@@ -361,13 +372,12 @@ public class DAO {
                             }
                             first = false;
 
-                            b.append(fName)
-                                    .append(" ")
-                                    .append(proxy.getColumnString(fld,
-                                            getter.getAnnotation(ForeignKey.class), typeName, constraints));
+                            b.append(fName).append(" ")
+                                    .append(proxy.getColumnString(column,
+                                            field.getAnnotation(ForeignKey.class), typeName, constraints));
 
-                            if (getter.isAnnotationPresent(Index.class)) {
-                                indexed.add(getter);
+                            if (field.isAnnotationPresent(Index.class)) {
+                                indexed.add(field);
                             }
                         }
                     }
@@ -382,11 +392,10 @@ public class DAO {
                     st.executeUpdate(b.toString());
 
                     // Create indexes
-                    for (Method getter : indexed) {
-                        st.executeUpdate(proxy.buildIndex(table, getter));
+                    for (var field : indexed) {
+                        st.executeUpdate(proxy.buildIndex(table, field));
                     }
-
-                } catch (IntrospectionException ex) {
+                } catch (SecurityException | SQLException ex) {
                     throw new RuntimeException(ex);
                 }
             }
@@ -397,9 +406,9 @@ public class DAO {
 
     private String getInsertSQL(Record record) {
         return insertSQL.computeIfAbsent(record.getClass(), clazz -> {
-            StringBuilder b = new StringBuilder("INSERT INTO ");
+            var b = new StringBuilder("INSERT INTO ");
 
-            Table table = clazz.getAnnotation(Table.class);
+            var table = clazz.getAnnotation(Table.class);
             if (table == null) {
                 throw new IllegalStateException("Class " + clazz.getName() + " is not properly annotated");
             }
@@ -409,22 +418,17 @@ public class DAO {
             int fCount = 0;
 
             try {
-                BeanInfo bi = Introspector.getBeanInfo(record.getClass());
-                PropertyDescriptor[] pds = bi.getPropertyDescriptors();
-                for (PropertyDescriptor pd : pds) {
-                    Method getter = pd.getReadMethod();
-                    if (getter != null) {
-                        Field fld = getter.getAnnotation(Field.class);
-                        if (fld != null) {
-                            if (fCount != 0) {
-                                b.append(",");
-                            }
-                            b.append(fld.value());
-                            fCount++;
+                for (var field : clazz.getDeclaredFields()) {
+                    var column = field.getAnnotation(Column.class);
+                    if (column != null) {
+                        if (fCount != 0) {
+                            b.append(",");
                         }
+                        b.append(column.value());
+                        fCount++;
                     }
                 }
-            } catch (IntrospectionException ex) {
+            } catch (SecurityException ex) {
                 throw new RuntimeException(ex);
             }
 
@@ -449,9 +453,9 @@ public class DAO {
 
     private String getUpdateSQL(Record record) {
         return updateSQL.computeIfAbsent(record.getClass(), clazz -> {
-            StringBuilder b = new StringBuilder("update ");
+            var b = new StringBuilder("update ");
 
-            Table table = clazz.getAnnotation(Table.class);
+            var table = clazz.getAnnotation(Table.class);
             if (table == null) {
                 throw new IllegalStateException(NOT_ANNOTATED);
             }
@@ -461,23 +465,18 @@ public class DAO {
             int fCount = 0;
 
             try {
-                BeanInfo bi = Introspector.getBeanInfo(record.getClass());
-                PropertyDescriptor[] pds = bi.getPropertyDescriptors();
-                for (PropertyDescriptor pd : pds) {
-                    Method getter = pd.getReadMethod();
-                    if (getter != null) {
-                        Field fld = getter.getAnnotation(Field.class);
-                        if (fld != null && !fld.primaryKey()) {
-                            if (fCount != 0) {
-                                b.append(", ");
-                            }
-                            b.append(fld.value())
-                                    .append("=?");
-                            fCount++;
+                for (var field : record.getClass().getDeclaredFields()) {
+                    var column = field.getAnnotation(Column.class);
+                    if (column != null && !column.primaryKey()) {
+                        if (fCount != 0) {
+                            b.append(", ");
                         }
+                        b.append(column.value())
+                                .append("=?");
+                        fCount++;
                     }
                 }
-            } catch (IntrospectionException ex) {
+            } catch (SecurityException ex) {
                 throw new RuntimeException(ex);
             }
 
@@ -493,30 +492,25 @@ public class DAO {
 
     private String getDeleteSQL(Class<? extends Record> clazz) {
         return deleteSQL.computeIfAbsent(clazz, cl -> {
-            StringBuilder b = new StringBuilder("delete from ");
-            Table table = cl.getAnnotation(Table.class);
+            var b = new StringBuilder("DELETE FROM ");
+            var table = cl.getAnnotation(Table.class);
             if (table == null) {
                 throw new IllegalStateException(NOT_ANNOTATED);
             }
             b.append(table.value())
-                    .append(" where ");
+                    .append(" WHERE ");
 
             String idName = null;
 
             try {
-                BeanInfo bi = Introspector.getBeanInfo(cl);
-                PropertyDescriptor[] pds = bi.getPropertyDescriptors();
-                for (PropertyDescriptor pd : pds) {
-                    Method getter = pd.getReadMethod();
-                    if (getter != null) {
-                        Field fld = getter.getAnnotation(Field.class);
-                        if (fld != null && fld.primaryKey()) {
-                            idName = fld.value();
-                            break;
-                        }
+                for (var field : clazz.getDeclaredFields()) {
+                    var column = field.getAnnotation(Column.class);
+                    if (column != null && column.primaryKey()) {
+                        idName = column.value();
+                        break;
                     }
                 }
-            } catch (IntrospectionException ex) {
+            } catch (SecurityException ex) {
                 throw new RuntimeException(ex);
             }
 
@@ -535,39 +529,40 @@ public class DAO {
         return getDeleteSQL(record.getClass());
     }
 
-    private void setData(Record record, PreparedStatement st, boolean update) throws SQLException {
+    private void setData(Record record, PreparedStatement st, boolean update) {
         try {
-            BeanInfo bi = Introspector.getBeanInfo(record.getClass());
-            PropertyDescriptor[] pds = bi.getPropertyDescriptors();
-
             int index = 1;
-            for (PropertyDescriptor pd : pds) {
-                Method getter = pd.getReadMethod();
-                if (getter != null && getter.isAnnotationPresent(Field.class)) {
+
+            var columns = columnMap.computeIfAbsent(record.getClass(), DAO::computeColumns);
+
+            for (var field : record.getClass().getDeclaredFields()) {
+                if (field.isAnnotationPresent(Column.class)) {
                     // if update skip ID at this point
-                    Field fld = getter.getAnnotation(Field.class);
+                    var fld = field.getAnnotation(Column.class);
                     if (update && fld.primaryKey()) {
                         continue;
                     }
 
-                    Object value = getter.invoke(record);
+                    var fieldRecord = columns.get(fld.value());
+                    var fieldType = field.getType();
 
-                    Class getterClass = getter.getReturnType();
-
-                    if (getterClass.equals(Optional.class)) {
-                        getterClass = getEffectiveType(getter);
-
-                        Method isPresentMethod = Optional.class.getDeclaredMethod("isPresent");
-                        if ((Boolean) isPresentMethod.invoke(value)) {
-                            value = Optional.class
-                                    .getDeclaredMethod("get")
-                                    .invoke(value);
-                        } else {
-                            value = null;
-                        }
+                    Object value;
+                    switch (fieldType.getName()) {
+                        case "int":
+                            value = UNSAFE.getInt(record, fieldRecord.offset);
+                            break;
+                        case "long":
+                            value = UNSAFE.getLong(record, fieldRecord.offset);
+                            break;
+                        case "boolean":
+                            value = UNSAFE.getBoolean(record, fieldRecord.offset);
+                            break;
+                        default:
+                            value = UNSAFE.getObject(record, fieldRecord.offset);
+                            break;
                     }
 
-                    String typeName = getterClass.isEnum() ? TYPE_ENUM : getterClass.getName();
+                    var typeName = fieldType.isEnum() ? TYPE_ENUM : fieldType.getName();
                     proxy.setFieldData(st, index++, value, typeName);
                 }
             }
@@ -627,13 +622,14 @@ public class DAO {
     }
 
     private Integer getIdMaxValue(String tableName) {
-        try (Connection conn = getDataSource().getConnection()) {
-            PreparedStatement st = conn.prepareStatement("SELECT id FROM " + tableName + " ORDER BY id DESC");
-            ResultSet rs = st.executeQuery();
-            if (rs.next()) {
-                return rs.getInt(1);
-            } else {
-                return 0;
+        try (var conn = getDataSource().getConnection()) {
+            var st = conn.prepareStatement("SELECT id FROM " + tableName + " ORDER BY id DESC");
+            try (var rs = st.executeQuery()) {
+                if (rs.next()) {
+                    return rs.getInt(1);
+                } else {
+                    return 0;
+                }
             }
         } catch (SQLException ex) {
             throw new RuntimeException(ex);
@@ -650,7 +646,7 @@ public class DAO {
      * @throws IllegalArgumentException if id of the record is 0
      */
     public <T extends Record> T insert(T record) {
-        try (Connection conn = getDataSource().getConnection()) {
+        try (var conn = getDataSource().getConnection()) {
             return insert(conn, record);
         } catch (SQLException ex) {
             throw new RuntimeException(ex);
@@ -672,8 +668,9 @@ public class DAO {
             throw new IllegalArgumentException("id == 0");
         }
 
-        try (PreparedStatement st = getPreparedStatement(record, conn, false)) {
+        try (var st = getPreparedStatement(record, conn, false)) {
             st.executeUpdate();
+            //noinspection unchecked
             return get(record.getId(), (Class<T>) record.getClass());
         } catch (SQLException ex) {
             throw new RuntimeException(ex);
@@ -691,7 +688,7 @@ public class DAO {
      * @param <T>     type of records
      */
     public <T extends Record> void insert(int size, List<T> records) {
-        try (Connection conn = getConnection()) {
+        try (var conn = getConnection()) {
             insert(conn, size, records);
         } catch (SQLException ex) {
             throw new RuntimeException(ex);
@@ -715,9 +712,9 @@ public class DAO {
         }
 
         if (!records.isEmpty()) {
-            String sql = getInsertSQL(records.get(0));
+            var sql = getInsertSQL(records.get(0));
 
-            try (PreparedStatement st = conn.prepareStatement(sql)) {
+            try (var st = conn.prepareStatement(sql)) {
                 int count = 0;
 
                 for (T r : records) {
@@ -746,7 +743,7 @@ public class DAO {
      * @throws IllegalArgumentException if id of the record is 0
      */
     public <T extends Record> T update(T record) {
-        try (Connection conn = getDataSource().getConnection()) {
+        try (var conn = getDataSource().getConnection()) {
             return update(conn, record);
         } catch (SQLException ex) {
             throw new RuntimeException(ex);
@@ -768,8 +765,9 @@ public class DAO {
             throw new IllegalArgumentException("id == 0");
         }
 
-        try (PreparedStatement ps = getPreparedStatement(record, conn, true)) {
+        try (var ps = getPreparedStatement(record, conn, true)) {
             ps.executeUpdate();
+            //noinspection unchecked
             return get(record.getId(), (Class<T>) record.getClass());
         } catch (SQLException ex) {
             throw new RuntimeException(ex);
@@ -783,8 +781,7 @@ public class DAO {
      * @param record record to delete
      */
     public void delete(Record record) {
-        try (Connection conn = getDataSource().getConnection();
-             PreparedStatement ps = getDeleteStatement(record, conn)) {
+        try (var conn = getDataSource().getConnection(); var ps = getDeleteStatement(record, conn)) {
             ps.executeUpdate();
         } catch (SQLException ex) {
             throw new RuntimeException(ex);
@@ -798,8 +795,7 @@ public class DAO {
      * @param clazz record type
      */
     public void delete(Integer id, Class<? extends Record> clazz) {
-        try (Connection conn = getDataSource().getConnection();
-             PreparedStatement ps = getDeleteStatement(id, clazz, conn)) {
+        try (var conn = getDataSource().getConnection(); var ps = getDeleteStatement(id, clazz, conn)) {
             ps.executeUpdate();
         } catch (SQLException ex) {
             throw new RuntimeException(ex);
@@ -812,7 +808,7 @@ public class DAO {
      * @param table table
      */
     public void deleteAll(Class<? extends Record> table) {
-        try (Connection connection = getDataSource().getConnection()) {
+        try (var connection = getDataSource().getConnection()) {
             deleteAll(connection, table);
         } catch (SQLException ex) {
             throw new RuntimeException(ex);
@@ -837,7 +833,7 @@ public class DAO {
      * @param tables tables to truncate
      */
     public void truncate(List<Class<? extends Record>> tables) {
-        try (Connection connection = getDataSource().getConnection()) {
+        try (var connection = getDataSource().getConnection()) {
             proxy.truncate(connection, tables);
             for (Class<? extends Record> t : tables) {
                 primaryKeys.put(t, 0);
@@ -863,11 +859,41 @@ public class DAO {
      * @param tables table classes
      */
     public void dropTables(List<Class<? extends Record>> tables) {
-        try (Connection conn = getDataSource().getConnection(); Statement st = conn.createStatement()) {
+        try (var conn = getDataSource().getConnection(); var st = conn.createStatement()) {
             for (Class<? extends Record> t : tables) {
                 st.execute("DROP TABLE " + Record.getTableName(t));
             }
         } catch (SQLException ex) {
+            throw new RuntimeException(ex);
+        }
+    }
+
+    static List<String> computeParameters(Constructor<?> constructor) {
+        var paramAnnotations = constructor.getParameterAnnotations();
+        if (paramAnnotations.length == 0) {
+            throw new IllegalArgumentException("Constructor builder must have parameters");
+        }
+
+        var result = new ArrayList<String>(paramAnnotations.length);
+
+        for (var paramAnnotation : paramAnnotations) {
+            var fieldName = Arrays.stream(paramAnnotation)
+                    .filter(a -> a instanceof Column)
+                    .findAny()
+                    .map(a -> ((Column) a).value())
+                    .orElseThrow(RuntimeException::new);
+            result.add(fieldName);
+        }
+
+        return result;
+    }
+
+    static {
+        try {
+            var f = Unsafe.class.getDeclaredField("theUnsafe");
+            f.setAccessible(true);
+            UNSAFE = (Unsafe) f.get(null);
+        } catch (Exception ex) {
             throw new RuntimeException(ex);
         }
     }

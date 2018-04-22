@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2015, 2017, Petr Panteleyev <petr@panteleyev.org>
+ * Copyright (c) 2018, Petr Panteleyev <petr@panteleyev.org>
  * All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
@@ -23,6 +23,7 @@
  * ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE
  * POSSIBILITY OF SUCH DAMAGE.
  */
+
 package org.panteleyev.persistence.annotations;
 
 import java.lang.annotation.ElementType;
@@ -30,13 +31,9 @@ import java.lang.annotation.Retention;
 import java.lang.annotation.RetentionPolicy;
 import java.lang.annotation.Target;
 
-/**
- * Defines database record field. Must be applied to getters. If Record uses {@link RecordBuilder} annotated constructor
- * its parameters must be annotated by {@link Field} as well.
- */
 @Retention(RetentionPolicy.RUNTIME)
-@Target({ ElementType.METHOD, ElementType.PARAMETER })
-public @interface Field {
+@Target({ElementType.FIELD, ElementType.PARAMETER})
+public @interface Column {
     /**
      * Most used value for the primary key field.
      */
