@@ -31,8 +31,10 @@ import org.panteleyev.persistence.annotations.ForeignKey;
 import org.panteleyev.persistence.annotations.Index;
 import org.panteleyev.persistence.annotations.RecordBuilder;
 import org.panteleyev.persistence.annotations.Table;
-import sun.misc.Unsafe;
 import javax.sql.DataSource;
+import java.lang.invoke.MethodHandle;
+import java.lang.invoke.MethodHandles;
+import java.lang.invoke.VarHandle;
 import java.lang.reflect.Constructor;
 import java.lang.reflect.Field;
 import java.sql.Connection;
@@ -54,13 +56,23 @@ import static org.panteleyev.persistence.DAOTypes.TYPE_ENUM;
  * Persistence API entry point.
  */
 public class DAO {
-    static class FieldRecord {
-        public final Class<?> type;
-        public final long offset;
+    static class ParameterHandle {
+        final String name;
+        final Class<?> type;
 
-        public FieldRecord(Class<?> type, long offset) {
+        ParameterHandle(String name, Class<?> type) {
+            this.name = name;
             this.type = type;
-            this.offset = offset;
+        }
+    }
+
+    static class ConstructorHandle {
+        final MethodHandle handle;
+        final List<ParameterHandle> parameters;
+
+        ConstructorHandle(MethodHandle handle, List<ParameterHandle> parameters) {
+            this.handle = handle;
+            this.parameters = parameters;
         }
     }
 
@@ -71,16 +83,8 @@ public class DAO {
     private final Map<Class<? extends Record>, String> updateSQL = new ConcurrentHashMap<>();
     private final Map<Class<? extends Record>, String> deleteSQL = new ConcurrentHashMap<>();
 
-    private static final Unsafe UNSAFE;
-
-    // Cached builder constructors
-    private final Map<Class<? extends Record>, Constructor<?>> constructorMap =
-            new ConcurrentHashMap<>();
-    private final Map<Constructor<?>, List<String>> constructorFieldsMap =
-            new ConcurrentHashMap<>();
-
-    // Cached columns
-    private final Map<Class<? extends Record>, Map<String, FieldRecord>> columnMap = new ConcurrentHashMap<>();
+    private final Map<Class<? extends Record>, ConstructorHandle> constructorMap = new ConcurrentHashMap<>();
+    private final Map<Class<? extends Record>, Map<String, VarHandle>> columnMap = new ConcurrentHashMap<>();
 
     private DataSource datasource;
 
@@ -242,68 +246,63 @@ public class DAO {
         }
     }
 
-    static Map<String, FieldRecord> computeColumns(Class<? extends Record> clazz) {
-        var result = new HashMap<String, FieldRecord>();
-        for (var field : clazz.getDeclaredFields()) {
-            var column = field.getAnnotation(Column.class);
-            if (column != null) {
-                result.put(column.value(), new FieldRecord(field.getType(), UNSAFE.objectFieldOffset(field)));
+    static Map<String, VarHandle> computeColumns(Class<? extends Record> clazz) {
+        try {
+            var lookup = MethodHandles.privateLookupIn(clazz, MethodHandles.lookup());
+
+            var result = new HashMap<String, VarHandle>();
+            for (var field : clazz.getDeclaredFields()) {
+                var column = field.getAnnotation(Column.class);
+                if (column != null) {
+                    var handle = lookup.unreflectVarHandle(field);
+                    result.put(column.value(), handle);
+                }
             }
+            return result;
+        } catch (IllegalAccessException ex) {
+            throw new RuntimeException(ex);
         }
-        return result;
     }
 
 
-    private void fromSQL(ResultSet set, Record record, Map<String, FieldRecord> columns) throws SQLException {
+    private void fromSQL(ResultSet set, Record record, Map<String, VarHandle> columns) throws SQLException {
         for (var entry : columns.entrySet()) {
-            var fieldRecord = entry.getValue();
-            var value = proxy.getFieldValue(entry.getKey(), fieldRecord.type, set);
+            var handle = entry.getValue();
+            var value = proxy.getFieldValue(entry.getKey(), handle.varType(), set);
 
-            switch (fieldRecord.type.getName()) {
+            switch (handle.varType().getName()) {
                 case "int":
-                    UNSAFE.putInt(record, fieldRecord.offset, value == null ? 0 : (int) value);
+                    handle.set(record, value == null ? 0 : (int) value);
                     break;
                 case "long":
-                    UNSAFE.putLong(record, fieldRecord.offset, value == null ? 0L : (long) value);
+                    handle.set(record, value == null ? 0L : (long) value);
                     break;
                 case "boolean":
-                    UNSAFE.putBoolean(record, fieldRecord.offset, value != null && (boolean) value);
+                    handle.set(record, value != null && (boolean) value);
                     break;
                 default:
-                    UNSAFE.putObject(record, fieldRecord.offset, value);
+                    handle.set(record, value);
                     break;
             }
         }
-        UNSAFE.fullFence();
     }
 
-    private <T extends Record> T fromSQL(ResultSet set, Constructor<?> constructor) {
-        var fieldNames = constructorFieldsMap.computeIfAbsent(constructor, DAO::computeParameters);
-
-        var paramTypes = constructor.getParameterTypes();
-        var params = new Object[fieldNames.size()];
-
+    private <T extends Record> T fromSQL(ResultSet set, ConstructorHandle builder) {
         try {
-            for (int i = 0; i < fieldNames.size(); i++) {
-                params[i] = proxy.getFieldValue(fieldNames.get(i), paramTypes[i], set);
+            var params = new ArrayList<>(builder.parameters.size());
+            for (ParameterHandle ph : builder.parameters) {
+                params.add(proxy.getFieldValue(ph.name, ph.type, set));
             }
 
             //noinspection unchecked
-            return (T) constructor.newInstance(params);
-        } catch (Exception ex) {
+            return (T) builder.handle.invokeWithArguments(params);
+        } catch (Throwable ex) {
             throw new RuntimeException(ex);
         }
     }
 
     <T extends Record> T fromSQL(ResultSet set, Class<T> clazz) {
-        var builder = constructorMap.computeIfAbsent(clazz, keyClass -> {
-            for (var constructor : keyClass.getConstructors()) {
-                if (constructor.isAnnotationPresent(RecordBuilder.class)) {
-                    return constructor;
-                }
-            }
-            return null;
-        });
+        var builder = constructorMap.computeIfAbsent(clazz, DAO::cacheConstructorHandle);
 
         try {
             if (builder != null) {
@@ -543,25 +542,10 @@ public class DAO {
                         continue;
                     }
 
-                    var fieldRecord = columns.get(fld.value());
+                    var handle = columns.get(fld.value());
                     var fieldType = field.getType();
 
-                    Object value;
-                    switch (fieldType.getName()) {
-                        case "int":
-                            value = UNSAFE.getInt(record, fieldRecord.offset);
-                            break;
-                        case "long":
-                            value = UNSAFE.getLong(record, fieldRecord.offset);
-                            break;
-                        case "boolean":
-                            value = UNSAFE.getBoolean(record, fieldRecord.offset);
-                            break;
-                        default:
-                            value = UNSAFE.getObject(record, fieldRecord.offset);
-                            break;
-                    }
-
+                    Object value = handle.get(record);
                     var typeName = fieldType.isEnum() ? TYPE_ENUM : fieldType.getName();
                     proxy.setFieldData(st, index++, value, typeName);
                 }
@@ -868,31 +852,42 @@ public class DAO {
         }
     }
 
-    static List<String> computeParameters(Constructor<?> constructor) {
-        var paramAnnotations = constructor.getParameterAnnotations();
-        if (paramAnnotations.length == 0) {
-            throw new IllegalArgumentException("Constructor builder must have parameters");
+    static ConstructorHandle cacheConstructorHandle(Class<?> clazz) {
+        Constructor<?> constructor = null;
+
+        for (var c : clazz.getConstructors()) {
+            if (c.isAnnotationPresent(RecordBuilder.class)) {
+                constructor = c;
+                break;
+            }
         }
 
-        var result = new ArrayList<String>(paramAnnotations.length);
+        if (constructor == null) {
+            return null;
+        }
 
-        for (var paramAnnotation : paramAnnotations) {
-            var fieldName = Arrays.stream(paramAnnotation)
+        var paramAnnotations = constructor.getParameterAnnotations();
+        var paramTypes = constructor.getParameterTypes();
+
+        var parameterHandles = new ArrayList<ParameterHandle>();
+
+        for (int i = 0; i < constructor.getParameterCount(); i++) {
+            var fieldName = Arrays.stream(paramAnnotations[i])
                     .filter(a -> a instanceof Column)
                     .findAny()
                     .map(a -> ((Column) a).value())
                     .orElseThrow(RuntimeException::new);
-            result.add(fieldName);
+            parameterHandles.add(new ParameterHandle(fieldName, paramTypes[i]));
         }
 
-        return result;
-    }
+        if (parameterHandles.isEmpty()) {
+            throw new IllegalArgumentException("Constructor builder must have parameters");
+        }
 
-    static {
+        var lookup = MethodHandles.publicLookup();
         try {
-            var f = Unsafe.class.getDeclaredField("theUnsafe");
-            f.setAccessible(true);
-            UNSAFE = (Unsafe) f.get(null);
+            var handle = lookup.unreflectConstructor(constructor);
+            return new ConstructorHandle(handle, parameterHandles);
         } catch (Exception ex) {
             throw new RuntimeException(ex);
         }

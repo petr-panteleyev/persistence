@@ -1,5 +1,9 @@
 # Change Log
 
+## [18.1.1] - 2018-05-01
+
+* Unsafe replaced with MethodHandle and VarHandle
+
 ## [18.1.0] - 2018-04-22
 
 * Performance optimizations

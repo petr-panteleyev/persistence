@@ -26,17 +26,21 @@
 
 package org.panteleyev.persistence;
 
-import org.panteleyev.persistence.annotations.RecordBuilder;
 import org.panteleyev.persistence.answers.ResultSetBigDecimalAnswer;
 import org.panteleyev.persistence.answers.ResultSetBooleanAnswer;
 import org.panteleyev.persistence.answers.ResultSetIntAnswer;
 import org.panteleyev.persistence.answers.ResultSetLongAnswer;
 import org.panteleyev.persistence.answers.ResultSetObjectAnswer;
+import org.panteleyev.persistence.test.EnumType;
 import org.panteleyev.persistence.test.model.ImmutableRecord;
 import org.panteleyev.persistence.test.model.RecordWithAllTypes;
 import org.testng.Assert;
 import org.testng.annotations.Test;
+import java.lang.invoke.VarHandle;
+import java.math.BigDecimal;
 import java.sql.ResultSet;
+import java.time.LocalDate;
+import java.util.Date;
 import java.util.List;
 import java.util.Map;
 import java.util.Random;
@@ -48,7 +52,17 @@ public class TestDAO {
     private static final int NUMBER_OF_RECORDS = 100;
     private static final Random RANDOM = new Random(System.currentTimeMillis());
 
-    private static final List<String> EXPECTED_PARAMS = List.of("id", "a", "b", "c", "d", "e", "f", "g", "h");
+    private static final List<DAO.ParameterHandle> EXPECTED_PARAMS = List.of(
+            new DAO.ParameterHandle("id", Integer.class),
+            new DAO.ParameterHandle("a", String.class),
+            new DAO.ParameterHandle("b", Integer.class),
+            new DAO.ParameterHandle("c", Boolean.class),
+            new DAO.ParameterHandle("d", Date.class),
+            new DAO.ParameterHandle("e", Long.class),
+            new DAO.ParameterHandle("f", BigDecimal.class),
+            new DAO.ParameterHandle("g", EnumType.class),
+            new DAO.ParameterHandle("h", LocalDate.class)
+    );
 
     @Test
     public void testFromSQLImmutable() throws Exception {
@@ -82,33 +96,35 @@ public class TestDAO {
     }
 
     @Test
-    public void testComputeParameters() {
-        for (var constructor : ImmutableRecord.class.getConstructors()) {
-            if (constructor.getAnnotation(RecordBuilder.class) != null) {
-                var params = DAO.computeParameters(constructor);
-                Assert.assertEquals(params, EXPECTED_PARAMS);
-            }
-        }
-    }
+    public void testCacheConstructorHandle() {
+        DAO.ConstructorHandle constructorHandle = DAO.cacheConstructorHandle(ImmutableRecord.class);
 
-    @Test(expectedExceptions = RuntimeException.class)
-    public void testComputeParametersNegative() {
-        for (var constructor : RecordWithAllTypes.class.getConstructors()) {
-            if (constructor.getParameterCount() > 0) {
-                DAO.computeParameters(constructor);
-            }
+        Assert.assertNotNull(constructorHandle);
+        Assert.assertNotNull(constructorHandle.handle);
+
+        var parameters = constructorHandle.parameters;
+
+        Assert.assertEquals(parameters.size(), EXPECTED_PARAMS.size());
+
+        for (int i = 0; i < EXPECTED_PARAMS.size(); i++) {
+            var p = parameters.get(i);
+            Assert.assertEquals(p.name, EXPECTED_PARAMS.get(i).name);
+            Assert.assertEquals(p.type, EXPECTED_PARAMS.get(i).type);
         }
     }
 
     @Test
+    public void testCacheConstructorHandleNegative() {
+        Assert.assertNull(DAO.cacheConstructorHandle(RecordWithAllTypes.class));
+    }
+
+    @Test
     public void testComputeColumns() {
-        Map<String, DAO.FieldRecord> actual = DAO.computeColumns(ImmutableRecord.class);
+        Map<String, VarHandle> actual = DAO.computeColumns(ImmutableRecord.class);
 
         for (var key : EXPECTED_PARAMS) {
-            DAO.FieldRecord fieldRecord = actual.get(key);
-            Assert.assertNotNull(fieldRecord);
-
-            Assert.assertTrue(fieldRecord.offset > 0);
+            var handle = actual.get(key.name);
+            Assert.assertNotNull(handle);
         }
     }
 
@@ -118,16 +134,16 @@ public class TestDAO {
 
         Integer key = dao.generatePrimaryKey(ImmutableRecord.class);
         Assert.assertNotNull(key);
-        Assert.assertEquals((int)key, 1);
+        Assert.assertEquals((int) key, 1);
 
         Integer newKey = dao.generatePrimaryKey(ImmutableRecord.class);
         Assert.assertNotNull(newKey);
-        Assert.assertEquals((int)newKey, 2);
+        Assert.assertEquals((int) newKey, 2);
 
         dao.resetPrimaryKey(ImmutableRecord.class);
 
         Integer resetKey = dao.generatePrimaryKey(ImmutableRecord.class);
         Assert.assertNotNull(resetKey);
-        Assert.assertEquals((int)resetKey, 1);
+        Assert.assertEquals((int) resetKey, 1);
     }
 }

@@ -178,8 +178,6 @@ module org.panteleyev.persistence {
     requires java.desktop;
     requires java.naming;
 
-    requires jdk.unsupported;
-
     exports org.panteleyev.persistence;
     exports org.panteleyev.persistence.annotations;
 }
