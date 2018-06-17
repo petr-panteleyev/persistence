@@ -172,7 +172,7 @@ public class ChildTable implements Record {
  @see <a href="https://dev.mysql.com/doc/refman/5.7/en/data-types.html">MySQL Data Types</a>
 
  */
-module org.panteleyev.persistence {
+open module org.panteleyev.persistence {
     requires java.base;
     requires java.sql;
     requires java.desktop;
