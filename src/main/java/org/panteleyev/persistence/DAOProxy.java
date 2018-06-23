@@ -132,13 +132,21 @@ interface DAOProxy {
         }
     };
 
+    BiFunction<ResultSet, String, byte[]> BYTE_ARRAY_READER = (ResultSet rs, String name) -> {
+        try {
+            return rs.getBytes(name);
+        } catch (SQLException ex) {
+            throw new RuntimeException(ex);
+        }
+    };
+
     default Object getFieldValue(String fieldName, Class typeClass, ResultSet set) throws SQLException {
         if (typeClass.isEnum()) {
             var value = set.getObject(fieldName);
             return value == null ? null : Enum.valueOf(typeClass, (String) value);
         }
 
-        var reader = getReaderMap().get(typeClass.getName());
+        var reader = getReaderMap().get(typeClass.getTypeName());
         if (reader == null) {
             throw new IllegalStateException(BAD_FIELD_TYPE);
         }

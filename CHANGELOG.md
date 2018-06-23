@@ -1,5 +1,9 @@
 # Change Log
 
+## [18.2.0] - 2018-06-23
+
+* byte[] support
+
 ## [18.1.1] - 2018-05-01
 
 * Unsafe replaced with MethodHandle and VarHandle

@@ -28,11 +28,7 @@ package org.panteleyev.persistence.test;
 import com.mysql.jdbc.jdbc2.optional.MysqlDataSource;
 import org.panteleyev.persistence.DAO;
 import org.panteleyev.persistence.Record;
-import org.panteleyev.persistence.test.model.ImmutableRecord;
-import org.panteleyev.persistence.test.model.ImmutableRecordWithPrimitives;
-import org.panteleyev.persistence.test.model.RecordWithAllTypes;
-import org.panteleyev.persistence.test.model.RecordWithOptionals;
-import org.panteleyev.persistence.test.model.RecordWithPrimitives;
+import org.panteleyev.persistence.test.model.ImmutableBinaryRecord;
 import org.testng.SkipException;
 import org.testng.annotations.DataProvider;
 import javax.sql.DataSource;
@@ -86,7 +82,7 @@ public class Base {
         try (Connection conn = dataSource.getConnection()) {
             Statement st = conn.createStatement();
             st.execute("CREATE DATABASE " + dbName);
-            ((MysqlDataSource)dataSource).setDatabaseName(dbName);
+            ((MysqlDataSource) dataSource).setDatabaseName(dbName);
             DAO dao = new DAO(dataSource);
             setDao(dao);
         } catch (SQLException ex) {
@@ -124,12 +120,13 @@ public class Base {
 
     @DataProvider(name = "recordClasses")
     public Object[][] recordClassesProvider() {
-        return new Object[][] {
-                { RecordWithAllTypes.class },
-                { RecordWithOptionals.class },
-                { ImmutableRecord.class },
-                { RecordWithPrimitives.class },
-                { ImmutableRecordWithPrimitives.class },
+        return new Object[][]{
+//                {RecordWithAllTypes.class},
+//                {RecordWithOptionals.class},
+//                {ImmutableRecord.class},
+//                {RecordWithPrimitives.class},
+//                {ImmutableRecordWithPrimitives.class},
+                {ImmutableBinaryRecord.class}
         };
     }
 
@@ -140,18 +137,18 @@ public class Base {
 
     protected <T extends Record> T givenRandomRecordWithId(Class<T> clazz, Integer id) throws Exception {
         Method method = clazz.getDeclaredMethod("newRecord", Integer.class, Random.class);
-        return (T)method.invoke(null, id, RANDOM);
+        return (T) method.invoke(null, id, RANDOM);
     }
 
     protected <T extends Record> T givenNullRecord(Class<T> clazz) throws Exception {
         Integer id = dao.generatePrimaryKey(clazz);
         Method method = clazz.getDeclaredMethod("newNullRecord", Integer.class);
-        return (T)method.invoke(null, id);
+        return (T) method.invoke(null, id);
     }
 
     public static boolean compareBigDecimals(BigDecimal x, BigDecimal y) {
         return Objects.equals(x, y)
-            || (x != null && x.compareTo(y) == 0);
+                || (x != null && x.compareTo(y) == 0);
     }
 }
 

@@ -131,6 +131,12 @@ class Book implements Record {
  <td>BIGINT</td>
  <td>Local dates are stored as long using {@link java.time.LocalDate#toEpochDay}</td>
  </tr>
+ <tr>
+ <td>byte[]</td>
+ <td>BLOB</td>
+ <td>VARBINARY ( {@link org.panteleyev.persistence.annotations.Column#length} ) </td>
+ <td></td>
+ </tr>
  </table>
 
  <p style="font-size: large;"><strong>Indexes and Foreign Keys</strong></p>

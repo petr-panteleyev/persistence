@@ -28,8 +28,10 @@ package org.panteleyev.persistence;
 import org.panteleyev.persistence.annotations.Column;
 import org.panteleyev.persistence.annotations.ForeignKey;
 import java.sql.Connection;
+import java.sql.PreparedStatement;
 import java.sql.ResultSet;
 import java.sql.SQLException;
+import java.sql.Types;
 import java.util.List;
 import java.util.Map;
 import java.util.function.BiFunction;
@@ -45,7 +47,8 @@ class MySQLProxy implements DAOProxy, DAOTypes {
             Map.entry(TYPE_BOOLEAN, OBJECT_READER),
             Map.entry(TYPE_BIG_DECIMAL, BIG_DECIMAL_READER),
             Map.entry(TYPE_DATE, DATE_READER),
-            Map.entry(TYPE_LOCAL_DATE, LOCAL_DATE_READER)
+            Map.entry(TYPE_LOCAL_DATE, LOCAL_DATE_READER),
+            Map.entry(TYPE_BYTE_ARRAY, BYTE_ARRAY_READER)
     );
 
     public Map<String, BiFunction<ResultSet, String, ?>> getReaderMap() {
@@ -85,6 +88,11 @@ class MySQLProxy implements DAOProxy, DAOTypes {
                         .append(column.scale())
                         .append(")");
                 break;
+            case TYPE_BYTE_ARRAY:
+                b.append("VARBINARY(")
+                        .append(column.length())
+                        .append(")");
+                break;
             default:
                 throw new IllegalStateException(BAD_FIELD_TYPE);
         }
@@ -113,4 +121,22 @@ class MySQLProxy implements DAOProxy, DAOTypes {
             throw new RuntimeException(ex);
         }
     }
+
+    @Override
+    public void setFieldData(PreparedStatement st, int index, Object value, String typeName) throws SQLException {
+        switch (typeName) {
+            case TYPE_BYTE_ARRAY:
+                if (value == null) {
+                    st.setNull(index, Types.VARBINARY);
+                } else {
+                    st.setBytes(index, (byte[]) value);
+                }
+                break;
+
+            default:
+                DAOProxy.super.setFieldData(st, index, value, typeName);
+                break;
+        }
+    }
+
 }

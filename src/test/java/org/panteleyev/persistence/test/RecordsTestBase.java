@@ -26,6 +26,8 @@
 package org.panteleyev.persistence.test;
 
 import org.panteleyev.persistence.Record;
+import org.panteleyev.persistence.test.model.BinaryRecord;
+import org.panteleyev.persistence.test.model.ImmutableBinaryRecord;
 import org.panteleyev.persistence.test.model.RecordWithAllTypes;
 import org.panteleyev.persistence.test.model.RecordWithOptionals;
 import org.panteleyev.persistence.test.model.RecordWithPrimitives;
@@ -44,7 +46,8 @@ class RecordsTestBase extends Base {
     private static final int RECORD_COUNT_2 = 10;
 
     private static final List<Class<? extends Record>> ALL_CLASSES =
-            Arrays.asList(RecordWithAllTypes.class, RecordWithOptionals.class);
+            Arrays.asList(RecordWithAllTypes.class, RecordWithOptionals.class,
+                    ImmutableBinaryRecord.class, BinaryRecord.class);
 
     @Test(dataProvider = "recordClasses")
     public void testRecordCreation(Class<? extends Record> clazz) throws Exception {

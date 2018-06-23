@@ -29,8 +29,10 @@ package org.panteleyev.persistence;
 import org.panteleyev.persistence.annotations.Column;
 import org.panteleyev.persistence.annotations.ForeignKey;
 import java.sql.Connection;
+import java.sql.PreparedStatement;
 import java.sql.ResultSet;
 import java.sql.SQLException;
+import java.sql.Types;
 import java.util.List;
 import java.util.Map;
 import java.util.function.BiFunction;
@@ -46,7 +48,8 @@ class SQLiteProxy implements DAOProxy, DAOTypes {
             Map.entry(TYPE_BOOLEAN, INT_BOOLEAN_READER),
             Map.entry(TYPE_BIG_DECIMAL, BIG_DECIMAL_READER),
             Map.entry(TYPE_DATE, DATE_READER),
-            Map.entry(TYPE_LOCAL_DATE, LOCAL_DATE_READER)
+            Map.entry(TYPE_LOCAL_DATE, LOCAL_DATE_READER),
+            Map.entry(TYPE_BYTE_ARRAY, BYTE_ARRAY_READER)
     );
 
     @Override
@@ -81,6 +84,9 @@ class SQLiteProxy implements DAOProxy, DAOTypes {
                         .append(column.precision() + 1)
                         .append(")");
                 break;
+            case TYPE_BYTE_ARRAY:
+                b.append("BLOB");
+                break;
             default:
                 throw new IllegalStateException(BAD_FIELD_TYPE);
         }
@@ -109,6 +115,22 @@ class SQLiteProxy implements DAOProxy, DAOTypes {
             statement.execute("VACUUM");
         } catch (SQLException ex) {
             throw new RuntimeException(ex);
+        }
+    }
+
+    public void setFieldData(PreparedStatement st, int index, Object value, String typeName) throws SQLException {
+        switch (typeName) {
+            case TYPE_BYTE_ARRAY:
+                if (value == null) {
+                    st.setNull(index, Types.BLOB);
+                } else {
+                    st.setBytes(index, (byte[]) value);
+                }
+                break;
+
+            default:
+                DAOProxy.super.setFieldData(st, index, value, typeName);
+                break;
         }
     }
 }

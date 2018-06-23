@@ -36,6 +36,7 @@ interface DAOTypes {
     String TYPE_LONG_PRIM   = "long";
     String TYPE_INT         = "int";
     String TYPE_BOOL        = "boolean";
+    String TYPE_BYTE_ARRAY  = "byte[]";
 
     String TYPE_ENUM        = "*** enum ***";
 

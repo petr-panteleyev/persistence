@@ -546,7 +546,7 @@ public class DAO {
                     var fieldType = field.getType();
 
                     Object value = handle.get(record);
-                    var typeName = fieldType.isEnum() ? TYPE_ENUM : fieldType.getName();
+                    var typeName = fieldType.isEnum() ? TYPE_ENUM : fieldType.getTypeName();
                     proxy.setFieldData(st, index++, value, typeName);
                 }
             }
