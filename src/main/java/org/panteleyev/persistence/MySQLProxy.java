@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2017, 2018, Petr Panteleyev <petr@panteleyev.org>
+ * Copyright (c) 2017, 2019, Petr Panteleyev <petr@panteleyev.org>
  * All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
@@ -27,6 +27,8 @@ package org.panteleyev.persistence;
 
 import org.panteleyev.persistence.annotations.Column;
 import org.panteleyev.persistence.annotations.ForeignKey;
+import org.panteleyev.persistence.annotations.PrimaryKey;
+import java.lang.reflect.Field;
 import java.sql.Connection;
 import java.sql.PreparedStatement;
 import java.sql.ResultSet;
@@ -34,36 +36,48 @@ import java.sql.SQLException;
 import java.sql.Types;
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
 import java.util.function.BiFunction;
 
 class MySQLProxy implements DAOProxy, DAOTypes {
     private static final Map<String, BiFunction<ResultSet, String, ?>> RESULT_SET_READERS = Map.ofEntries(
-            Map.entry(TYPE_STRING, OBJECT_READER),
-            Map.entry(TYPE_INTEGER, OBJECT_READER),
-            Map.entry(TYPE_INT, INT_READER),
-            Map.entry(TYPE_LONG, OBJECT_READER),
-            Map.entry(TYPE_LONG_PRIM, LONG_READER),
-            Map.entry(TYPE_BOOL, BOOL_READER),
-            Map.entry(TYPE_BOOLEAN, OBJECT_READER),
-            Map.entry(TYPE_BIG_DECIMAL, BIG_DECIMAL_READER),
-            Map.entry(TYPE_DATE, DATE_READER),
-            Map.entry(TYPE_LOCAL_DATE, LOCAL_DATE_READER),
-            Map.entry(TYPE_BYTE_ARRAY, BYTE_ARRAY_READER)
+        Map.entry(TYPE_STRING, OBJECT_READER),
+        Map.entry(TYPE_INTEGER, OBJECT_READER),
+        Map.entry(TYPE_INT, INT_READER),
+        Map.entry(TYPE_LONG, OBJECT_READER),
+        Map.entry(TYPE_LONG_PRIM, LONG_READER),
+        Map.entry(TYPE_BOOL, BOOL_READER),
+        Map.entry(TYPE_BOOLEAN, OBJECT_READER),
+        Map.entry(TYPE_BIG_DECIMAL, BIG_DECIMAL_READER),
+        Map.entry(TYPE_DATE, DATE_READER),
+        Map.entry(TYPE_LOCAL_DATE, LOCAL_DATE_READER),
+        Map.entry(TYPE_BYTE_ARRAY, BYTE_ARRAY_READER),
+        Map.entry(TYPE_UUID, UUID_STRING_READER)
     );
 
     public Map<String, BiFunction<ResultSet, String, ?>> getReaderMap() {
         return RESULT_SET_READERS;
     }
 
-    public String getColumnString(Column column, ForeignKey foreignKey, String typeName, List<String> constraints) {
+    public String getColumnString(Column column, PrimaryKey primaryKey, ForeignKey foreignKey, String typeName,
+                                  List<String> constraints)
+    {
         var b = new StringBuilder();
 
         switch (typeName) {
             case TYPE_STRING:
-            case TYPE_ENUM:
-                b.append("VARCHAR(")
+                if (column.isJson()) {
+                    b.append("JSON");
+                } else {
+                    b.append("VARCHAR(")
                         .append(column.length())
                         .append(")");
+                }
+                break;
+            case TYPE_ENUM:
+                b.append("VARCHAR(")
+                    .append(column.length())
+                    .append(")");
                 break;
             case TYPE_BOOL:
             case TYPE_BOOLEAN:
@@ -83,21 +97,24 @@ class MySQLProxy implements DAOProxy, DAOTypes {
                 break;
             case TYPE_BIG_DECIMAL:
                 b.append("DECIMAL(")
-                        .append(column.precision())
-                        .append(",")
-                        .append(column.scale())
-                        .append(")");
+                    .append(column.precision())
+                    .append(",")
+                    .append(column.scale())
+                    .append(")");
                 break;
             case TYPE_BYTE_ARRAY:
                 b.append("VARBINARY(")
-                        .append(column.length())
-                        .append(")");
+                    .append(column.length())
+                    .append(")");
+                break;
+            case TYPE_UUID:
+                b.append("BINARY(16)");
                 break;
             default:
-                throw new IllegalStateException(BAD_FIELD_TYPE);
+                throw new IllegalStateException(BAD_FIELD_TYPE + typeName);
         }
 
-        if (column.primaryKey()) {
+        if (primaryKey != null) {
             b.append(" PRIMARY KEY");
         }
 
@@ -139,4 +156,41 @@ class MySQLProxy implements DAOProxy, DAOTypes {
         }
     }
 
+    @Override
+    public String getSelectColumnString(Field field) {
+        var column = field.getAnnotation(Column.class);
+        Objects.requireNonNull(column, FIELD_NOT_ANNOTATED + field.getName());
+
+        if (field.getType().getTypeName().equals(TYPE_UUID)) {
+            return "BIN_TO_UUID(" + column.value() + ") AS " + column.value();
+        } else {
+            return column.value();
+        }
+    }
+
+    @Override
+    public String getInsertColumnPattern(Field field) {
+        if (field.getType().getTypeName().equals(TYPE_UUID)) {
+            return "UUID_TO_BIN(?)";
+        } else {
+            return "?";
+        }
+    }
+
+    @Override
+    public String getUpdateColumnPattern(Field field) {
+        return getInsertColumnPattern(field);
+    }
+
+    @Override
+    public String getWhereColumnString(Field field) {
+        var column = field.getAnnotation(Column.class);
+        Objects.requireNonNull(column, FIELD_NOT_ANNOTATED + field.getName());
+
+        if (field.getType().getTypeName().equals(TYPE_UUID)) {
+            return "BIN_TO_UUID(" + column.value() + ")";
+        } else {
+            return column.value();
+        }
+    }
 }

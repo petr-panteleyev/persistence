@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2016, 2019, Petr Panteleyev <petr@panteleyev.org>
+ * Copyright (c) 2019, Petr Panteleyev <petr@panteleyev.org>
  * All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
@@ -24,46 +24,62 @@
  * POSSIBILITY OF SUCH DAMAGE.
  */
 
-package org.panteleyev.persistence;
+package org.panteleyev.persistence.model;
 
+import org.panteleyev.persistence.Record;
+import org.panteleyev.persistence.annotations.Column;
+import org.panteleyev.persistence.annotations.PrimaryKey;
 import org.panteleyev.persistence.annotations.Table;
+import java.util.Objects;
 
-/**
- * Database record.
- * @param <K> type of the primary key
- */
-public interface Record<K> {
-    /**
-     * Returns table name. Class must be annotated by {@link Table}.
-     *
-     * @return table name
-     * @throws IllegalStateException if class is not annotated by {@link Table}.
-     */
-    default String getTableName() {
-        return getTableName(getClass());
+@Table("string_primary_key")
+public class StringPrimaryKeyRecord implements Record<String> {
+    @PrimaryKey
+    @Column("prim_key")
+    private String primKey;
+
+    @Column("value")
+    private String value;
+
+    public StringPrimaryKeyRecord() {
     }
 
-    /**
-     * Returns table name for table class. Class must be annotated by {@link Table}.
-     *
-     * @param table table class
-     * @return table name
-     * @throws IllegalStateException if class is not annotated by {@link Table}.
-     */
-    static String getTableName(Class<? extends Record> table) {
-        var annotation = table.getAnnotation(Table.class);
-        if (annotation != null) {
-            return annotation.value();
-        } else {
-            throw new IllegalStateException("Class " + table.getName() + "is not properly annotated");
+    public StringPrimaryKeyRecord(String primKey, String value) {
+        this.primKey = primKey;
+        this.value = value;
+    }
+
+    public String getPrimKey() {
+        return primKey;
+    }
+
+    public void setPrimKey(String primKey) {
+        this.primKey = primKey;
+    }
+
+    public String getValue() {
+        return value;
+    }
+
+    public void setValue(String value) {
+        this.value = value;
+    }
+
+    @Override
+    public boolean equals(Object o) {
+        if (this == o) {
+            return true;
         }
+        if (o == null || getClass() != o.getClass()) {
+            return false;
+        }
+        var that = (StringPrimaryKeyRecord) o;
+        return Objects.equals(primKey, that.primKey) &&
+            Objects.equals(value, that.value);
     }
 
-    /**
-     * Returns primary key value.
-     * @return primary key value
-     */
-    default K getPrimaryKey() {
-        return DAO.getPrimaryKey(this);
+    @Override
+    public int hashCode() {
+        return Objects.hash(primKey, value);
     }
 }

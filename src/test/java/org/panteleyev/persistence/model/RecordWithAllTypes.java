@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2017, 2018, Petr Panteleyev <petr@panteleyev.org>
+ * Copyright (c) 2017, 2019, Petr Panteleyev <petr@panteleyev.org>
  * All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
@@ -23,13 +23,13 @@
  * ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE
  * POSSIBILITY OF SUCH DAMAGE.
  */
-package org.panteleyev.persistence.test.model;
+package org.panteleyev.persistence.model;
 
 import org.panteleyev.persistence.Record;
 import org.panteleyev.persistence.annotations.Column;
+import org.panteleyev.persistence.annotations.PrimaryKey;
 import org.panteleyev.persistence.annotations.Table;
-import org.panteleyev.persistence.test.Base;
-import org.panteleyev.persistence.test.EnumType;
+import org.panteleyev.persistence.base.Base;
 import java.math.BigDecimal;
 import java.time.LocalDate;
 import java.util.Date;
@@ -38,32 +38,34 @@ import java.util.Random;
 import java.util.UUID;
 
 @Table("all_types_table")
-public class RecordWithAllTypes implements Record {
-    @Column(value = Column.ID, primaryKey = true)
+public class RecordWithAllTypes implements Record<Integer> {
+    @PrimaryKey
+    @Column("primary_key")
     private Integer id;
 
     // fields
-    @Column("a")
+    @Column("a_field")
     private String a;
-    @Column("b")
+    @Column("b_field")
     private Integer b;
-    @Column("c")
+    @Column("c_field")
     private Boolean c;
-    @Column("d")
+    @Column("d_field")
     private Date d;
-    @Column("e")
+    @Column("e_field")
     private Long e;
-    @Column("f")
+    @Column("f_field")
     private BigDecimal f;
-    @Column("g")
+    @Column("g_field")
     private EnumType g;
-    @Column("h")
+    @Column("h_field")
     private LocalDate h;
 
     public RecordWithAllTypes() {
     }
 
-    public RecordWithAllTypes(Integer id, String a, Integer b, Boolean c, Date d, Long e, BigDecimal f, EnumType g, LocalDate h) {
+    public RecordWithAllTypes(Integer id, String a, Integer b, Boolean c, Date d, Long e, BigDecimal f, EnumType g,
+                              LocalDate h) {
         this.id = id;
         this.a = a;
         this.b = b;
@@ -75,12 +77,10 @@ public class RecordWithAllTypes implements Record {
         this.h = h;
     }
 
-    @Override
     public int getId() {
         return id;
     }
 
-    @Override
     public void setId(int id) {
         this.id = id;
     }
@@ -151,29 +151,29 @@ public class RecordWithAllTypes implements Record {
 
     public static RecordWithAllTypes newRecord(Integer id, Random random) {
         return new RecordWithAllTypes(
-                id,
-                UUID.randomUUID().toString(),
-                random.nextInt(),
-                random.nextBoolean(),
-                new Date(),
-                random.nextLong(),
-                BigDecimal.TEN,
-                EnumType.F2,
-                LocalDate.now()
+            id,
+            UUID.randomUUID().toString(),
+            random.nextInt(),
+            random.nextBoolean(),
+            new Date(),
+            random.nextLong(),
+            BigDecimal.TEN,
+            EnumType.F2,
+            LocalDate.now()
         );
     }
 
     public static RecordWithAllTypes newNullRecord(Integer id) {
         return new RecordWithAllTypes(
-                id,
-                null,
-                null,
-                null,
-                null,
-                null,
-                null,
-                null,
-                null
+            id,
+            null,
+            null,
+            null,
+            null,
+            null,
+            null,
+            null,
+            null
         );
     }
 
@@ -183,14 +183,14 @@ public class RecordWithAllTypes implements Record {
             RecordWithAllTypes that = (RecordWithAllTypes) o;
 
             return Objects.equals(this.id, that.id)
-                    && Objects.equals(this.a, that.a)
-                    && Objects.equals(this.b, that.b)
-                    && Objects.equals(this.c, that.c)
-                    && Objects.equals(this.d, that.d)
-                    && Objects.equals(this.e, that.e)
-                    && Base.compareBigDecimals(this.f, that.f)
-                    && Objects.equals(this.g, that.g)
-                    && Objects.equals(this.h, that.h);
+                && Objects.equals(this.a, that.a)
+                && Objects.equals(this.b, that.b)
+                && Objects.equals(this.c, that.c)
+                && Objects.equals(this.d, that.d)
+                && Objects.equals(this.e, that.e)
+                && Base.compareBigDecimals(this.f, that.f)
+                && Objects.equals(this.g, that.g)
+                && Objects.equals(this.h, that.h);
         } else {
             return false;
         }
@@ -204,8 +204,8 @@ public class RecordWithAllTypes implements Record {
     @Override
     public String toString() {
         return "[ImmutableRecord: id=" + id
-                + " a=" + a + " b=" + b + " c=" + c + " d=" + d
-                + " e=" + e + " f=" + f + " g=" + g + " h=" + h
-                + "]";
+            + " a=" + a + " b=" + b + " c=" + c + " d=" + d
+            + " e=" + e + " f=" + f + " g=" + g + " h=" + h
+            + "]";
     }
 }

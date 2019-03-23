@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2017, 2018, Petr Panteleyev <petr@panteleyev.org>
+ * Copyright (c) 2017, 2019, Petr Panteleyev <petr@panteleyev.org>
  * All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
@@ -24,48 +24,59 @@
  * POSSIBILITY OF SUCH DAMAGE.
  */
 
-package org.panteleyev.persistence.test.model;
+package org.panteleyev.persistence.model;
 
 import org.panteleyev.persistence.Record;
 import org.panteleyev.persistence.annotations.Column;
+import org.panteleyev.persistence.annotations.PrimaryKey;
+import org.panteleyev.persistence.annotations.RecordBuilder;
 import org.panteleyev.persistence.annotations.Table;
-import org.panteleyev.persistence.test.Base;
-import org.panteleyev.persistence.test.EnumType;
+import org.panteleyev.persistence.base.Base;
 import java.math.BigDecimal;
+import java.math.RoundingMode;
 import java.time.LocalDate;
 import java.util.Date;
 import java.util.Objects;
-import java.util.Optional;
 import java.util.Random;
 import java.util.UUID;
 
-@Table("optionals_table")
-public class RecordWithOptionals implements Record {
-    @Column(value = Column.ID, primaryKey = true)
-    private Integer id;
+@Table("immutable_table")
+public class ImmutableRecord implements Record<Integer> {
+    @PrimaryKey
+    @Column(Column.ID)
+    private final Integer id;
 
     // fields
+    // Tests may assume annotations use the same names
     @Column("a")
-    private String a;
+    private final String a;
     @Column("b")
-    private Integer b;
+    private final Integer b;
     @Column("c")
-    private Boolean c;
+    private final Boolean c;
     @Column("d")
-    private Date d;
+    private final Date d;
     @Column("e")
-    private Long e;
+    private final Long e;
     @Column("f")
-    private BigDecimal f;
+    private final BigDecimal f;
     @Column("g")
-    private EnumType g;
+    private final EnumType g;
     @Column("h")
-    private LocalDate h;
+    private final LocalDate h;
 
-    public RecordWithOptionals() {
-    }
+    private final Integer b2;
 
-    public RecordWithOptionals(Integer id, String a, Integer b, Boolean c, Date d, Long e, BigDecimal f, EnumType g, LocalDate h) {
+    @RecordBuilder
+    public ImmutableRecord(@Column("id") Integer id,
+                           @Column("a") String a,
+                           @Column("b") Integer b,
+                           @Column("c") Boolean c,
+                           @Column("d") Date d,
+                           @Column("e") Long e,
+                           @Column("f") BigDecimal f,
+                           @Column("g") EnumType g,
+                           @Column("h") LocalDate h) {
         this.id = id;
         this.a = a;
         this.b = b;
@@ -75,99 +86,66 @@ public class RecordWithOptionals implements Record {
         this.f = f;
         this.g = g;
         this.h = h;
+
+        b2 = b == null ? null : b + b;
     }
 
-    @Override
     public int getId() {
         return id;
     }
 
-    @Override
-    public void setId(int id) {
-        this.id = id;
+    public String getA() {
+        return a;
     }
 
-    public Optional<String> getA() {
-        return Optional.ofNullable(a);
+    public Integer getB() {
+        return b;
     }
 
-    public void setA(String a) {
-        this.a = a;
+    public Boolean getC() {
+        return c;
     }
 
-    public Optional<Integer> getB() {
-        return Optional.ofNullable(b);
+    public Date getD() {
+        return d;
     }
 
-    public void setB(Integer b) {
-        this.b = b;
+    public Long getE() {
+        return e;
     }
 
-    public Optional<Boolean> getC() {
-        return Optional.ofNullable(c);
+    public BigDecimal getF() {
+        return f;
     }
 
-    public void setC(Boolean c) {
-        this.c = c;
+    public EnumType getG() {
+        return g;
     }
 
-    public Optional<Date> getD() {
-        return Optional.ofNullable(d);
+    public LocalDate getH() {
+        return h;
     }
 
-    public void setD(Date d) {
-        this.d = d;
+    public Integer getB2() {
+        return b2;
     }
 
-    public Optional<Long> getE() {
-        return Optional.ofNullable(e);
-    }
-
-    public void setE(Long e) {
-        this.e = e;
-    }
-
-    public Optional<BigDecimal> getF() {
-        return Optional.ofNullable(f);
-    }
-
-    public void setF(BigDecimal f) {
-        this.f = f;
-    }
-
-    public Optional<EnumType> getG() {
-        return Optional.ofNullable(g);
-    }
-
-    public void setG(EnumType g) {
-        this.g = g;
-    }
-
-    public Optional<LocalDate> getH() {
-        return Optional.ofNullable(h);
-    }
-
-    public void setH(LocalDate h) {
-        this.h = h;
-    }
-
-
-    public static RecordWithOptionals newRecord(Integer id, Random random) {
-        return new RecordWithOptionals(
+    public static ImmutableRecord newRecord(Integer id, Random random) {
+        return new ImmutableRecord(
                 id,
                 UUID.randomUUID().toString(),
                 random.nextInt(),
                 random.nextBoolean(),
                 new Date(),
                 random.nextLong(),
-                BigDecimal.TEN,
-                EnumType.F3,
+                new BigDecimal(random.nextDouble()).setScale(6, RoundingMode.HALF_UP),
+                EnumType.F1,
                 LocalDate.now()
         );
     }
 
-    public static RecordWithOptionals newNullRecord(Integer id) {
-        return new RecordWithOptionals(
+    public static ImmutableRecord newNullRecord(Integer id) {
+        return new ImmutableRecord(
                 id,
                 null,
                 null,
@@ -182,8 +160,8 @@ public class RecordWithOptionals implements Record {
 
     @Override
     public boolean equals(Object o) {
-        if (o instanceof RecordWithOptionals) {
-            RecordWithOptionals that = (RecordWithOptionals) o;
+        if (o instanceof ImmutableRecord) {
+            ImmutableRecord that = (ImmutableRecord) o;
 
             return Objects.equals(this.id, that.id)
                     && Objects.equals(this.a, that.a)
@@ -192,7 +170,9 @@ public class RecordWithOptionals implements Record {
                     && Objects.equals(this.d, that.d)
                     && Objects.equals(this.e, that.e)
                     && Base.compareBigDecimals(this.f, that.f)
-                    && Objects.equals(this.g, that.g);
+                    && Objects.equals(this.g, that.g)
+                    && Objects.equals(this.h, that.h)
+                    && Objects.equals(this.b2, that.b2);
         } else {
             return false;
         }
@@ -200,6 +180,15 @@ public class RecordWithOptionals implements Record {
 
     @Override
     public int hashCode() {
-        return Objects.hash(a, b, c, d, e, f, g);
+        return Objects.hash(a, b, c, d, e, f, g, h, b2);
+    }
+
+    @Override
+    public String toString() {
+        return "[ImmutableRecord: id=" + id
+                + " a=" + a + " b=" + b + " c=" + c + " d=" + d
+                + " e=" + e + " f=" + f + " g=" + g + " h=" + h
+                + " b2=" + b2
+                + "]";
     }
 }

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2017, Petr Panteleyev <petr@panteleyev.org>
+ * Copyright (c) 2017, 2019, Petr Panteleyev <petr@panteleyev.org>
  * All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
@@ -24,50 +24,9 @@
  * POSSIBILITY OF SUCH DAMAGE.
  */
 
-package org.panteleyev.persistence.test;
+package org.panteleyev.persistence.model;
 
-import com.mysql.jdbc.jdbc2.optional.MysqlDataSource;
-import javax.sql.DataSource;
+import org.panteleyev.persistence.Record;
 
-class MySQLBuilder {
-    private String host;
-    private int port = 3306;
-    private String dbName;
-    private String user;
-    private String password;
-
-    DataSource build() {
-        MysqlDataSource ds = new MysqlDataSource();
-        ds.setDatabaseName(dbName);
-        ds.setPort(port);
-        ds.setServerName(host);
-        ds.setUser(user);
-        ds.setPassword(password);
-        return ds;
-    }
-
-    MySQLBuilder host(String host) {
-        this.host = host;
-        return this;
-    }
-
-    MySQLBuilder port(int port) {
-        this.port = port;
-        return this;
-    }
-
-    MySQLBuilder name(String name) {
-        this.dbName = name;
-        return this;
-    }
-
-    MySQLBuilder user(String user) {
-        this.user = user;
-        return this;
-    }
-
-    MySQLBuilder password(String password) {
-        this.password = password;
-        return this;
-    }
+public class NotAnnotatedRecord implements Record {
 }

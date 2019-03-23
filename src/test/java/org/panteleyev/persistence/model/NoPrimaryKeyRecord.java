@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2017, Petr Panteleyev <petr@panteleyev.org>
+ * Copyright (c) 2019, Petr Panteleyev <petr@panteleyev.org>
  * All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
@@ -22,12 +22,31 @@
  * CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE)
  * ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE
  * POSSIBILITY OF SUCH DAMAGE.
- *
  */
-package org.panteleyev.persistence.test;
 
-public enum EnumType {
-    F1,
-    F2,
-    F3;
+package org.panteleyev.persistence.model;
+
+import org.panteleyev.persistence.Record;
+import org.panteleyev.persistence.annotations.Column;
+import org.panteleyev.persistence.annotations.Table;
+
+@Table("no_primary_key")
+public class NoPrimaryKeyRecord implements Record {
+    @Column("value")
+    private String value;
+
+    public NoPrimaryKeyRecord() {
+    }
+
+    public NoPrimaryKeyRecord(String value) {
+        this.value = value;
+    }
+
+    public String getValue() {
+        return value;
+    }
+
+    public void setValue(String value) {
+        this.value = value;
+    }
 }

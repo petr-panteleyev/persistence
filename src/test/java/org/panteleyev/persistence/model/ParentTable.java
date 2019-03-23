@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2017, Petr Panteleyev <petr@panteleyev.org>
+ * Copyright (c) 2017, 2019, Petr Panteleyev <petr@panteleyev.org>
  * All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
@@ -23,30 +23,40 @@
  * ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE
  * POSSIBILITY OF SUCH DAMAGE.
  */
-package org.panteleyev.persistence;
 
-import java.util.Set;
+package org.panteleyev.persistence.model;
 
-interface DAOTypes {
-    String TYPE_BIG_DECIMAL = "java.math.BigDecimal";
-    String TYPE_DATE        = "java.util.Date";
-    String TYPE_LOCAL_DATE  = "java.time.LocalDate";
-    String TYPE_LONG        = "java.lang.Long";
-    String TYPE_INTEGER     = "java.lang.Integer";
-    String TYPE_BOOLEAN     = "java.lang.Boolean";
-    String TYPE_STRING      = "java.lang.String";
-    String TYPE_UUID        = "java.util.UUID";
-    String TYPE_LONG_PRIM   = "long";
-    String TYPE_INT         = "int";
-    String TYPE_BOOL        = "boolean";
-    String TYPE_BYTE_ARRAY  = "byte[]";
+import org.panteleyev.persistence.Record;
+import org.panteleyev.persistence.annotations.Column;
+import org.panteleyev.persistence.annotations.Index;
+import org.panteleyev.persistence.annotations.PrimaryKey;
+import org.panteleyev.persistence.annotations.RecordBuilder;
+import org.panteleyev.persistence.annotations.Table;
 
-    String TYPE_ENUM        = "*** enum ***";
+@Table("parent_table")
+public class ParentTable implements Record<Integer> {
+    @PrimaryKey
+    @Column(Column.ID)
+    private int id;
+    @Column("value")
+    @Index(value = "value", unique = true)
+    private String value;
 
-    // Exception strings
-    String CLASS_NOT_ANNOTATED = "Class is not properly annotated: ";
-    String FIELD_NOT_ANNOTATED = "Field is not properly annotated: ";
-    String BAD_FIELD_TYPE   = "Unsupported field type: ";
+    @RecordBuilder
+    public ParentTable(@Column("id") int id, @Column("value") String value) {
+        this.id = id;
+        this.value = value;
+    }
 
-    Set<String> AUTO_INCREMENT_TYPES = Set.of(TYPE_INT, TYPE_INTEGER, TYPE_LONG, TYPE_LONG_PRIM);
+    public int getId() {
+        return id;
+    }
+
+    public String getValue() {
+        return value;
+    }
+
+    public void setValue(String value) {
+        this.value = value;
+    }
 }

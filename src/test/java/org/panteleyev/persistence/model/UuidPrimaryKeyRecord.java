@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, Petr Panteleyev <petr@panteleyev.org>
+ * Copyright (c) 2019, Petr Panteleyev <petr@panteleyev.org>
  * All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
@@ -24,62 +24,63 @@
  * POSSIBILITY OF SUCH DAMAGE.
  */
 
-package org.panteleyev.persistence.test.model;
+package org.panteleyev.persistence.model;
 
 import org.panteleyev.persistence.Record;
 import org.panteleyev.persistence.annotations.Column;
-import org.panteleyev.persistence.annotations.RecordBuilder;
+import org.panteleyev.persistence.annotations.PrimaryKey;
 import org.panteleyev.persistence.annotations.Table;
-import java.util.Arrays;
 import java.util.Objects;
-import java.util.Random;
+import java.util.UUID;
 
-@Table("binary_table")
-public class ImmutableBinaryRecord implements Record {
-    @Column(value = Column.ID, primaryKey = true)
-    private final Integer id;
+@Table("uuid_primary_key")
+public class UuidPrimaryKeyRecord implements Record<UUID> {
+    @PrimaryKey
+    @Column("prim_key")
+    private UUID primKey;
 
-    @Column(value = "a", length = 3000)
-    private final byte[] a;
+    @Column("value")
+    private String value;
 
-    @RecordBuilder
-    public ImmutableBinaryRecord(@Column("id") Integer id,
-                                 @Column("a") byte[] a) {
-        this.id = id;
-        this.a = a;
+    public UuidPrimaryKeyRecord() {
+    }
+
+    public UuidPrimaryKeyRecord(UUID primKey, String value) {
+        this.primKey = primKey;
+        this.value = value;
+    }
+
+    public UUID getPrimKey() {
+        return primKey;
+    }
+
+    public void setPrimKey(UUID primKey) {
+        this.primKey = primKey;
+    }
+
+    public String getValue() {
+        return value;
+    }
+
+    public void setValue(String value) {
+        this.value = value;
     }
 
     @Override
-    public int getId() {
-        return id;
-    }
-
-    @Override
-    public boolean equals(Object object) {
-        if (this == object) {
+    public boolean equals(Object o) {
+        if (this == o) {
             return true;
-        } else if (object instanceof ImmutableBinaryRecord) {
-            ImmutableBinaryRecord that = (ImmutableBinaryRecord) object;
-            return Objects.equals(this.id, that.id)
-                    && Arrays.equals(this.a, that.a);
-        } else {
+        }
+        if (o == null || getClass() != o.getClass()) {
             return false;
         }
+        var that = (UuidPrimaryKeyRecord) o;
+        return Objects.equals(primKey, that.primKey) &&
+            Objects.equals(value, that.value);
     }
 
     @Override
     public int hashCode() {
-        return Objects.hash(id, a);
-    }
-
-    public static ImmutableBinaryRecord newRecord(Integer id, Random random) {
-        byte[] a = new byte[1000];
-        random.nextBytes(a);
-
-        return new ImmutableBinaryRecord(id, a);
-    }
-
-    public static ImmutableBinaryRecord newNullRecord(Integer id) {
-        return new ImmutableBinaryRecord(id, null);
+        return Objects.hash(primKey, value);
     }
 }

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2017, Petr Panteleyev <petr@panteleyev.org>
+ * Copyright (c) 2019, Petr Panteleyev <petr@panteleyev.org>
  * All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
@@ -24,13 +24,64 @@
  * POSSIBILITY OF SUCH DAMAGE.
  */
 
-package org.panteleyev.persistence.test.model;
+package org.panteleyev.persistence.model;
 
 import org.panteleyev.persistence.Record;
+import org.panteleyev.persistence.annotations.Column;
+import org.panteleyev.persistence.annotations.PrimaryKey;
+import org.panteleyev.persistence.annotations.Table;
+import java.util.Objects;
 
-public class NotAnnotatedRecord implements Record {
-    @Override
+@Table("table_with_json")
+public class RecordWithJson implements Record<Integer> {
+    @PrimaryKey
+    @Column(Column.ID)
+    private int id;
+
+    @Column(value = "json", isJson = true)
+    private String json;
+
+    public RecordWithJson() {
+    }
+
+    public RecordWithJson(int id, String json) {
+        this.id = id;
+        this.json = json;
+    }
+
     public int getId() {
-        return 0;
+        return id;
+    }
+
+    public void setId(int id) {
+        this.id = id;
+    }
+
+    public String getJson() {
+        return json;
+    }
+
+    public void setJson(String json) {
+        this.json = json;
+    }
+
+    @Override
+    public boolean equals(Object object) {
+        if (this == object) {
+            return true;
+        }
+
+        if (!(object instanceof RecordWithJson)) {
+            return false;
+        }
+
+        var that = (RecordWithJson) object;
+        return this.id == that.id
+            && Objects.equals(this.json, that.json);
+    }
+
+    @Override
+    public int hashCode() {
+        return Objects.hash(id, json);
     }
 }

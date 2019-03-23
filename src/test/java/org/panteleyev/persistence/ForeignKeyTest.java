@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2017, Petr Panteleyev <petr@panteleyev.org>
+ * Copyright (c) 2019, Petr Panteleyev <petr@panteleyev.org>
  * All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
@@ -23,21 +23,24 @@
  * ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE
  * POSSIBILITY OF SUCH DAMAGE.
  */
-package org.panteleyev.persistence.test;
+package org.panteleyev.persistence;
 
-import org.panteleyev.persistence.Record;
-import org.panteleyev.persistence.test.model.ChildTable;
-import org.panteleyev.persistence.test.model.ParentTable;
+import org.panteleyev.persistence.base.Base;
+import org.panteleyev.persistence.model.ChildTable;
+import org.panteleyev.persistence.model.ParentTable;
 import org.testng.Assert;
 import org.testng.annotations.Test;
 import java.util.Arrays;
 import java.util.List;
 import java.util.UUID;
+import static org.panteleyev.persistence.base.Base.MYSQL_GROUP;
+import static org.panteleyev.persistence.base.Base.SQLITE_GROUP;
 
-class ForeignKeyTestBase extends Base {
+@Test(groups = {SQLITE_GROUP, MYSQL_GROUP})
+public class ForeignKeyTest extends Base {
 
     private void deleteForbidden(Record record) {
-        boolean exception = false;
+        var exception = false;
         try {
             getDao().delete(record);
         } catch (Exception ex) {
@@ -47,7 +50,7 @@ class ForeignKeyTestBase extends Base {
     }
 
     private void updateForbidden(ParentTable record) {
-        boolean exception = false;
+        var exception = false;
         try {
             record.setValue(UUID.randomUUID().toString());
             getDao().update(record);
@@ -58,39 +61,39 @@ class ForeignKeyTestBase extends Base {
     }
 
     @Test
-    public void testForeignKeyOnDelete() throws Exception {
+    public void testForeignKeyOnDelete() {
         List<Class<? extends Record>> classes = Arrays.asList(ParentTable.class, ChildTable.class);
 
         getDao().createTables(classes);
         getDao().preload(classes);
 
-        ParentTable cascade = new ParentTable(getDao().generatePrimaryKey(ParentTable.class),
-                UUID.randomUUID().toString());
+        var cascade = new ParentTable(getDao().generatePrimaryKey(ParentTable.class),
+            UUID.randomUUID().toString());
         getDao().insert(cascade);
 
-        ParentTable restrict = new ParentTable(getDao().generatePrimaryKey(ParentTable.class),
-                UUID.randomUUID().toString());
+        var restrict = new ParentTable(getDao().generatePrimaryKey(ParentTable.class),
+            UUID.randomUUID().toString());
         getDao().insert(restrict);
 
-        ParentTable setNull = new ParentTable(getDao().generatePrimaryKey(ParentTable.class),
-                UUID.randomUUID().toString());
+        var setNull = new ParentTable(getDao().generatePrimaryKey(ParentTable.class),
+            UUID.randomUUID().toString());
         getDao().insert(setNull);
 
-        ParentTable noAction = new ParentTable(getDao().generatePrimaryKey(ParentTable.class),
-                UUID.randomUUID().toString());
+        var noAction = new ParentTable(getDao().generatePrimaryKey(ParentTable.class),
+            UUID.randomUUID().toString());
         getDao().insert(noAction);
 
-        ParentTable none = new ParentTable(getDao().generatePrimaryKey(ParentTable.class),
-                UUID.randomUUID().toString());
+        var none = new ParentTable(getDao().generatePrimaryKey(ParentTable.class),
+            UUID.randomUUID().toString());
         getDao().insert(none);
 
-        ChildTable table = new ChildTable(
-                getDao().generatePrimaryKey(ChildTable.class),
-                setNull.getValue(),
-                cascade.getValue(),
-                restrict.getValue(),
-                noAction.getValue(),
-                none.getValue()
+        var table = new ChildTable(
+            getDao().generatePrimaryKey(ChildTable.class),
+            setNull.getValue(),
+            cascade.getValue(),
+            restrict.getValue(),
+            noAction.getValue(),
+            none.getValue()
         );
         getDao().insert(table);
 
@@ -111,39 +114,35 @@ class ForeignKeyTestBase extends Base {
     }
 
     @Test
-    public void testForeignKeyOnUpdate() throws Exception {
+    public void testForeignKeyOnUpdate() {
         List<Class<? extends Record>> classes = Arrays.asList(ParentTable.class, ChildTable.class);
 
         getDao().createTables(classes);
         getDao().preload(classes);
 
-        ParentTable cascade = new ParentTable(getDao().generatePrimaryKey(ParentTable.class),
-                UUID.randomUUID().toString());
+        var cascade = new ParentTable(getDao().generatePrimaryKey(ParentTable.class), UUID.randomUUID().toString());
         getDao().insert(cascade);
 
-        ParentTable restrict = new ParentTable(getDao().generatePrimaryKey(ParentTable.class),
-                UUID.randomUUID().toString());
+        var restrict = new ParentTable(getDao().generatePrimaryKey(ParentTable.class), UUID.randomUUID().toString());
         getDao().insert(restrict);
 
-        ParentTable setNull = new ParentTable(getDao().generatePrimaryKey(ParentTable.class),
-                UUID.randomUUID().toString());
+        var setNull = new ParentTable(getDao().generatePrimaryKey(ParentTable.class), UUID.randomUUID().toString());
         getDao().insert(setNull);
 
-        ParentTable noAction = new ParentTable(getDao().generatePrimaryKey(ParentTable.class),
-                UUID.randomUUID().toString());
+        var noAction = new ParentTable(getDao().generatePrimaryKey(ParentTable.class), UUID.randomUUID().toString());
         getDao().insert(noAction);
 
-        ParentTable none = new ParentTable(getDao().generatePrimaryKey(ParentTable.class),
-                UUID.randomUUID().toString());
+        var none = new ParentTable(getDao().generatePrimaryKey(ParentTable.class),
+            UUID.randomUUID().toString());
         getDao().insert(none);
 
-        ChildTable table = new ChildTable(
-                getDao().generatePrimaryKey(ChildTable.class),
-                setNull.getValue(),
-                cascade.getValue(),
-                restrict.getValue(),
-                noAction.getValue(),
-                none.getValue()
+        var table = new ChildTable(
+            getDao().generatePrimaryKey(ChildTable.class),
+            setNull.getValue(),
+            cascade.getValue(),
+            restrict.getValue(),
+            noAction.getValue(),
+            none.getValue()
         );
         getDao().insert(table);
 
@@ -154,15 +153,14 @@ class ForeignKeyTestBase extends Base {
         // Set null
         setNull.setValue(UUID.randomUUID().toString());
         getDao().update(setNull);
-        ChildTable setNullCheck = getDao().get(table.getId(), ChildTable.class);
+        var setNullCheck = getDao().get(table.getId(), ChildTable.class);
         Assert.assertNotNull(setNullCheck);
         Assert.assertNull(setNullCheck.getNullValue());
 
         // Cascade
         cascade.setValue(UUID.randomUUID().toString());
         getDao().update(cascade);
-        ChildTable cascadeCheck = getDao().get(table.getId(), ChildTable.class);
+        var cascadeCheck = getDao().get(table.getId(), ChildTable.class);
         Assert.assertEquals(cascadeCheck.getCascadeValue(), cascade.getValue());
     }
-
 }

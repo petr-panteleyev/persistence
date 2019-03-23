@@ -29,6 +29,7 @@ package org.panteleyev.persistence;
 import org.panteleyev.persistence.annotations.Column;
 import org.panteleyev.persistence.annotations.ForeignKey;
 import org.panteleyev.persistence.annotations.Index;
+import org.panteleyev.persistence.annotations.PrimaryKey;
 import org.panteleyev.persistence.annotations.ReferenceOption;
 import org.panteleyev.persistence.annotations.Table;
 import java.lang.reflect.Field;
@@ -43,8 +44,10 @@ import java.util.Date;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
+import java.util.UUID;
 import java.util.function.BiFunction;
 import static org.panteleyev.persistence.DAOTypes.BAD_FIELD_TYPE;
+import static org.panteleyev.persistence.DAOTypes.FIELD_NOT_ANNOTATED;
 import static org.panteleyev.persistence.DAOTypes.TYPE_BIG_DECIMAL;
 import static org.panteleyev.persistence.DAOTypes.TYPE_BOOL;
 import static org.panteleyev.persistence.DAOTypes.TYPE_BOOLEAN;
@@ -56,6 +59,7 @@ import static org.panteleyev.persistence.DAOTypes.TYPE_LOCAL_DATE;
 import static org.panteleyev.persistence.DAOTypes.TYPE_LONG;
 import static org.panteleyev.persistence.DAOTypes.TYPE_LONG_PRIM;
 import static org.panteleyev.persistence.DAOTypes.TYPE_STRING;
+import static org.panteleyev.persistence.DAOTypes.TYPE_UUID;
 
 interface DAOProxy {
     BiFunction<ResultSet, String, Object> OBJECT_READER = (ResultSet rs, String name) -> {
@@ -140,6 +144,15 @@ interface DAOProxy {
         }
     };
 
+    BiFunction<ResultSet, String, UUID> UUID_STRING_READER = (ResultSet rs, String name) -> {
+        try {
+            String uuid = rs.getString(name);
+            return UUID.fromString(uuid);
+        } catch (SQLException ex) {
+            throw new RuntimeException(ex);
+        }
+    };
+
     default Object getFieldValue(String fieldName, Class typeClass, ResultSet set) throws SQLException {
         if (typeClass.isEnum()) {
             var value = set.getObject(fieldName);
@@ -148,7 +161,7 @@ interface DAOProxy {
 
         var reader = getReaderMap().get(typeClass.getTypeName());
         if (reader == null) {
-            throw new IllegalStateException(BAD_FIELD_TYPE);
+            throw new IllegalStateException(BAD_FIELD_TYPE + typeClass.getTypeName());
         }
 
         return reader.apply(set, fieldName);
@@ -156,9 +169,36 @@ interface DAOProxy {
 
     Map<String, BiFunction<ResultSet, String, ?>> getReaderMap();
 
-    String getColumnString(Column fld, ForeignKey foreignKey, String typeName, List<String> constraints);
+    String getColumnString(Column fld, PrimaryKey primaryKey, ForeignKey foreignKey, String typeName,
+                           List<String> constraints);
 
     void truncate(Connection connection, List<Class<? extends Record>> tables);
+
+    default String getInsertColumnPattern(Field field) {
+        return "?";
+    }
+
+    default String getUpdateColumnPattern(Field field) {
+        return "?";
+    }
+
+    default String getWhereColumnString(Field field) {
+        var column = field.getAnnotation(Column.class);
+        Objects.requireNonNull(column, FIELD_NOT_ANNOTATED + field.getName());
+        return column.value();
+    }
+
+    /**
+     * Returns string representation of the column in SELECT statement.
+     *
+     * @param field field annotated with {@link Column}
+     * @return string representation or empty string
+     */
+    default String getSelectColumnString(Field field) {
+        var column = field.getAnnotation(Column.class);
+        Objects.requireNonNull(column, FIELD_NOT_ANNOTATED + field.getName());
+        return column.value();
+    }
 
     default void setFieldData(PreparedStatement st, int index, Object value, String typeName) throws SQLException {
         switch (typeName) {
@@ -167,6 +207,13 @@ interface DAOProxy {
                     st.setNull(index, Types.VARCHAR);
                 } else {
                     st.setString(index, (String) value);
+                }
+                break;
+            case TYPE_UUID:
+                if (value == null) {
+                    st.setNull(index, Types.VARCHAR);
+                } else {
+                    st.setString(index, value.toString());
                 }
                 break;
             case TYPE_BOOL:
@@ -222,7 +269,7 @@ interface DAOProxy {
                 }
                 break;
             default:
-                throw new IllegalStateException(BAD_FIELD_TYPE);
+                throw new IllegalStateException(BAD_FIELD_TYPE + typeName);
         }
     }
 
@@ -240,13 +287,13 @@ interface DAOProxy {
         var fk = new StringBuilder();
 
         fk.append("FOREIGN KEY (")
-                .append(column.value())
-                .append(") ")
-                .append("REFERENCES ")
-                .append(parentTableName)
-                .append("(")
-                .append(parentFieldName)
-                .append(")");
+            .append(column.value())
+            .append(") ")
+            .append("REFERENCES ")
+            .append(parentTableName)
+            .append("(")
+            .append(parentFieldName)
+            .append(")");
 
         if (key.onUpdate() != ReferenceOption.NONE) {
             fk.append(" ON UPDATE ").append(key.onUpdate().toString());
@@ -269,12 +316,12 @@ interface DAOProxy {
         }
 
         b.append("INDEX ")
-                .append(index.value())
-                .append(" ON ")
-                .append(table.value())
-                .append(" (")
-                .append(column.value())
-                .append(")");
+            .append(index.value())
+            .append(" ON ")
+            .append(table.value())
+            .append(" (")
+            .append(column.value())
+            .append(")");
 
         return b.toString();
     }

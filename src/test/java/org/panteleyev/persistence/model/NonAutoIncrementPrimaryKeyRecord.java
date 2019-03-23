@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2017, 2018, Petr Panteleyev <petr@panteleyev.org>
+ * Copyright (c) 2019, Petr Panteleyev <petr@panteleyev.org>
  * All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
@@ -24,31 +24,36 @@
  * POSSIBILITY OF SUCH DAMAGE.
  */
 
-package org.panteleyev.persistence.test.model;
+package org.panteleyev.persistence.model;
 
 import org.panteleyev.persistence.Record;
 import org.panteleyev.persistence.annotations.Column;
-import org.panteleyev.persistence.annotations.Index;
-import org.panteleyev.persistence.annotations.RecordBuilder;
+import org.panteleyev.persistence.annotations.PrimaryKey;
 import org.panteleyev.persistence.annotations.Table;
 
-@Table("parent_table")
-public class ParentTable implements Record {
-    @Column(value = Column.ID, primaryKey = true)
-    private int id;
+@Table("integer_primary_key")
+public class NonAutoIncrementPrimaryKeyRecord implements Record<Integer> {
+    @PrimaryKey(isAutoIncrement = false)
+    @Column("prim_key")
+    private int primKey;
+
     @Column("value")
-    @Index(value = "value", unique = true)
     private String value;
 
-    @RecordBuilder
-    public ParentTable(@Column("id") int id, @Column("value") String value) {
-        this.id = id;
+    public NonAutoIncrementPrimaryKeyRecord() {
+    }
+
+    public NonAutoIncrementPrimaryKeyRecord(int primKey, String value) {
+        this.primKey = primKey;
         this.value = value;
     }
 
-    @Override
-    public int getId() {
-        return id;
+    public int getPrimKey() {
+        return primKey;
+    }
+
+    public void setPrimKey(int primKey) {
+        this.primKey = primKey;
     }
 
     public String getValue() {

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2017, Petr Panteleyev <petr@panteleyev.org>
+ * Copyright (c) 2019, Petr Panteleyev <petr@panteleyev.org>
  * All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
@@ -23,23 +23,39 @@
  * ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE
  * POSSIBILITY OF SUCH DAMAGE.
  */
-package org.panteleyev.persistence.test;
 
-import org.testng.annotations.AfterMethod;
-import org.testng.annotations.BeforeMethod;
+package org.panteleyev.persistence;
+
+import org.panteleyev.persistence.base.Base;
+import org.panteleyev.persistence.model.StringPrimaryKeyRecord;
 import org.testng.annotations.Test;
-import java.sql.Connection;
+import java.util.Collections;
+import java.util.UUID;
+import static org.panteleyev.persistence.base.Base.MYSQL_GROUP;
+import static org.panteleyev.persistence.base.Base.SQLITE_GROUP;
+import static org.testng.Assert.assertEquals;
 
-@Test(groups = "sqlite")
-public class TestForeignKeySQLite extends ForeignKeyTestBase {
+@Test(groups = {SQLITE_GROUP, MYSQL_GROUP})
+public class StringPrimaryKeyTest extends Base {
 
-    @BeforeMethod
-    public void setup() throws Exception {
-        setupSQLite();
-    }
+    @Test
+    public void testStringPrimaryKey() {
+        getDao().createTables(Collections.singletonList(StringPrimaryKeyRecord.class));
+        getDao().preload(Collections.singletonList(StringPrimaryKeyRecord.class));
 
-    @AfterMethod
-    public void cleanup() throws Exception {
-        cleanupSQLite();
+        var id = UUID.randomUUID().toString();
+        var record = new StringPrimaryKeyRecord(id, UUID.randomUUID().toString());
+
+        getDao().insert(record);
+
+        var retrieved = getDao().get(id, StringPrimaryKeyRecord.class);
+        assertEquals(retrieved, record);
+
+        var newValue = UUID.randomUUID().toString();
+        getDao().update(new StringPrimaryKeyRecord(record.getPrimKey(), newValue));
+
+        var updated = getDao().get(id, StringPrimaryKeyRecord.class);
+        assertEquals(updated.getPrimKey(), record.getPrimKey());
+        assertEquals(updated.getValue(), newValue);
     }
 }

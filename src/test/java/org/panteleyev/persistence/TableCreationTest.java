@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2017, Petr Panteleyev <petr@panteleyev.org>
+ * Copyright (c) 2019, Petr Panteleyev <petr@panteleyev.org>
  * All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
@@ -23,30 +23,36 @@
  * ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE
  * POSSIBILITY OF SUCH DAMAGE.
  */
+package org.panteleyev.persistence;
 
-package org.panteleyev.persistence.test;
-
-import org.panteleyev.persistence.Record;
-import org.panteleyev.persistence.test.model.NotAnnotatedRecord;
-import org.panteleyev.persistence.test.model.RecordWithAllTypes;
+import org.panteleyev.persistence.base.Base;
+import org.panteleyev.persistence.model.ImmutableRecord;
+import org.panteleyev.persistence.model.ImmutableRecordWithPrimitives;
+import org.panteleyev.persistence.model.RecordWithAllTypes;
+import org.panteleyev.persistence.model.RecordWithOptionals;
+import org.panteleyev.persistence.model.RecordWithPrimitives;
 import org.testng.Assert;
 import org.testng.annotations.Test;
+import java.util.Arrays;
+import static org.panteleyev.persistence.base.Base.MYSQL_GROUP;
+import static org.panteleyev.persistence.base.Base.SQLITE_GROUP;
 
-@Test
-public class TestUtilities {
+@Test(groups = {SQLITE_GROUP, MYSQL_GROUP})
+public class TableCreationTest extends Base {
     @Test
-    public void testGetTableName() {
-        Assert.assertEquals(Record.getTableName(RecordWithAllTypes.class), "all_types_table");
-        Assert.assertEquals(new RecordWithAllTypes().getTableName(), "all_types_table");
-    }
+    public void testCreateTables() {
+        getDao().createTables(Arrays.asList(
+            RecordWithAllTypes.class,
+            RecordWithOptionals.class,
+            RecordWithPrimitives.class,
+            ImmutableRecord.class,
+            ImmutableRecordWithPrimitives.class
+        ));
 
-    @Test(expectedExceptions = {IllegalStateException.class})
-    public void testGetTableNameStaticNegative() {
-        Record.getTableName(NotAnnotatedRecord.class);
-    }
-
-    @Test(expectedExceptions = {IllegalStateException.class})
-    public void testGetTableNameNegative() {
-        new NotAnnotatedRecord().getTableName();
+        Assert.assertTrue(getDao().getAll(RecordWithAllTypes.class).isEmpty());
+        Assert.assertTrue(getDao().getAll(RecordWithOptionals.class).isEmpty());
+        Assert.assertTrue(getDao().getAll(RecordWithPrimitives.class).isEmpty());
+        Assert.assertTrue(getDao().getAll(ImmutableRecord.class).isEmpty());
+        Assert.assertTrue(getDao().getAll(ImmutableRecordWithPrimitives.class).isEmpty());
     }
 }

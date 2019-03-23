@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, Petr Panteleyev <petr@panteleyev.org>
+ * Copyright (c) 2018, 2019, Petr Panteleyev <petr@panteleyev.org>
  * All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
@@ -24,33 +24,33 @@
  * POSSIBILITY OF SUCH DAMAGE.
  */
 
-package org.panteleyev.persistence.test.model;
+package org.panteleyev.persistence.model;
 
 import org.panteleyev.persistence.Record;
 import org.panteleyev.persistence.annotations.Column;
+import org.panteleyev.persistence.annotations.PrimaryKey;
 import org.panteleyev.persistence.annotations.RecordBuilder;
 import org.panteleyev.persistence.annotations.Table;
 import java.util.Arrays;
 import java.util.Objects;
 import java.util.Random;
 
-@Table("binary_table")
-public class BinaryRecord implements Record {
-    @Column(value = Column.ID, primaryKey = true)
-    private Integer id;
+@Table("immutable_binary_table")
+public class ImmutableBinaryRecord implements Record {
+    @PrimaryKey
+    @Column(Column.ID)
+    private final Integer id;
 
     @Column(value = "a", length = 3000)
-    private byte[] a;
+    private final byte[] a;
 
-    public BinaryRecord() {
-    }
-
-    private BinaryRecord(int id, byte[] a) {
+    @RecordBuilder
+    public ImmutableBinaryRecord(@Column(Column.ID) Integer id,
+                                 @Column("a") byte[] a) {
         this.id = id;
         this.a = a;
     }
 
-    @Override
     public int getId() {
         return id;
     }
@@ -59,8 +59,8 @@ public class BinaryRecord implements Record {
     public boolean equals(Object object) {
         if (this == object) {
             return true;
-        } else if (object instanceof BinaryRecord) {
-            BinaryRecord that = (BinaryRecord) object;
+        } else if (object instanceof ImmutableBinaryRecord) {
+            ImmutableBinaryRecord that = (ImmutableBinaryRecord) object;
             return Objects.equals(this.id, that.id)
                     && Arrays.equals(this.a, that.a);
         } else {
@@ -73,14 +73,14 @@ public class BinaryRecord implements Record {
         return Objects.hash(id, a);
     }
 
-    public static BinaryRecord newRecord(Integer id, Random random) {
+    public static ImmutableBinaryRecord newRecord(Integer id, Random random) {
         byte[] a = new byte[1000];
         random.nextBytes(a);
 
-        return new BinaryRecord(id, a);
+        return new ImmutableBinaryRecord(id, a);
     }
 
-    public static BinaryRecord newNullRecord(Integer id) {
-        return new BinaryRecord(id, null);
+    public static ImmutableBinaryRecord newNullRecord(Integer id) {
+        return new ImmutableBinaryRecord(id, null);
     }
 }

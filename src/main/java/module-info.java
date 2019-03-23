@@ -1,3 +1,9 @@
+import org.panteleyev.persistence.annotations.Column;
+import org.panteleyev.persistence.annotations.Table;
+import org.panteleyev.persistence.annotations.RecordBuilder;
+import org.panteleyev.persistence.Record;
+import org.panteleyev.persistence.DAO;
+
 /**
  Persistence library provides annotation classes for database access.
 
@@ -11,17 +17,21 @@
  <p style="font-size: large;"><strong>Table</strong></p>
 
  <p>
- Class implementing database table is defined by the annotation {@link org.panteleyev.persistence.annotations.Table}.
- Such class must also implement interface {@link org.panteleyev.persistence.Record} and at least method
- {@link org.panteleyev.persistence.Record#getId}.
+ Class implementing database table is defined by the annotation {@link Table}.
+ Such class must also implement interface {@link Record}.
  </p>
 
- <p>
- API currently supports only integer as primary key type. Use {@link org.panteleyev.persistence.DAO#generatePrimaryKey} to
- generate unique values for each table class. Also make sure that application calls
- {@link org.panteleyev.persistence.DAO#preload} first.
- </p>
+ <p>API currently supports the following primary key types:</p>
+ <ul>
+ <li>{@link java.lang.Integer}, int
+ <li>{@link java.lang.Long}, long
+ <li>{@link java.lang.String}
+ <li>{@link java.util.UUID}
+ </ul>
 
+ <p>In case of {@link java.lang.Integer} one may use {@link DAO#generatePrimaryKey} to generate unique values for the
+ appropriate table classes. Also make sure that application calls {@link DAO#preload} first.
+ </p>
 
  <p style="font-size: large;"><strong>Deserialization</strong></p>
 
@@ -40,7 +50,8 @@
   <pre><code>
 {@literal @}Table("book")
 class Book implements Record {
-    {@literal @}Column(value = Column.ID, primaryKey = true)
+    {@literal @}PrimaryKey
+    {@literal @}Column(Column.ID)
     private int id;
     {@literal @}Column("title")
     private String title;
@@ -66,14 +77,15 @@ class Book implements Record {
  <p><strong>Constructor</strong></p>
 
  <p>
- Constructor deserialization is triggered by {@link org.panteleyev.persistence.annotations.RecordBuilder}
+ Constructor deserialization is triggered by {@link RecordBuilder}
  as shown below. Such constructor must have parameters corresponding to table columns.
  </p>
 
  <pre><code>
 {@literal @}Table("book")
 class Book implements Record {
-    {@literal @}Column(value = Field.ID, primaryKey = true)
+    {@literal @}PrimaryKey
+    {@literal @}Column(Field.ID)
     private final int id;
     {@literal @}Column("title")
     private final String title;
@@ -103,17 +115,23 @@ class Book implements Record {
  <tr><th>Java</th><th>SQLite</th><th>MySQL</th><th>Comment</th></tr>
  <tr><td>int<br>{@link java.lang.Integer}</td><td>INTEGER</td><td>INTEGER</td><td></td></tr>
  <tr><td>long<br>{@link java.lang.Long}</td><td>INTEGER</td><td>BIGINT</td><td></td></tr>
- <tr><td>bool<br>{@link java.lang.Boolean}</td><td>BOOLEAN</td><td>BOOLEAN</td><td></td></tr>
+ <tr><td>boolean<br>{@link java.lang.Boolean}</td><td>BOOLEAN</td><td>BOOLEAN</td><td></td></tr>
  <tr>
  <td>{@link java.lang.String}</td>
- <td>VARCHAR ( {@link org.panteleyev.persistence.annotations.Column#length} )</td>
- <td>VARCHAR ( {@link org.panteleyev.persistence.annotations.Column#length} )</td>
+ <td>VARCHAR ( {@link Column#length} )</td>
+ <td>VARCHAR ( {@link Column#length} )</td>
+ <td></td>
+ </tr>
+ <tr>
+ <td>{@link java.lang.String} with {@link Column#isJson()} = true</td>
+ <td>BLOB</td>
+ <td>JSON</td>
  <td></td>
  </tr>
  <tr>
  <td>{@link java.math.BigDecimal}</td>
- <td>VARCHAR ( {@link org.panteleyev.persistence.annotations.Column#precision} + 1 )</td>
- <td>DECIMAL ( {@link org.panteleyev.persistence.annotations.Column#precision}, {@link org.panteleyev.persistence.annotations.Column#scale} )</td>
+ <td>VARCHAR ( {@link Column#precision} + 1 )</td>
+ <td>DECIMAL ( {@link Column#precision}, {@link Column#scale} )</td>
  <td>
  MySQL representation does not guarantee that retrieved value will be equal to original one by means of
  {@link java.lang.Object#equals}. Use {@link java.math.BigDecimal#compareTo} instead.
@@ -134,8 +152,16 @@ class Book implements Record {
  <tr>
  <td>byte[]</td>
  <td>BLOB</td>
- <td>VARBINARY ( {@link org.panteleyev.persistence.annotations.Column#length} ) </td>
+ <td>VARBINARY ( {@link Column#length} ) </td>
  <td></td>
+ </tr>
+ <tr>
+ <td>{@link java.util.UUID}</td>
+ <td>VARCHAR(36)</td>
+ <td>BINARY(16)</td>
+ <td>For MySQL the following conversion functions are used between string and binary representation:
+ <code>BIN_TO_UUID()</code> and <code>UUID_TO_BIN()</code>
+ </td>
  </tr>
  </table>
 

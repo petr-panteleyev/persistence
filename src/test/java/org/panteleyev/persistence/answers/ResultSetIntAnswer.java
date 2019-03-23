@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, Petr Panteleyev <petr@panteleyev.org>
+ * Copyright (c) 2018, 2019, Petr Panteleyev <petr@panteleyev.org>
  * All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
@@ -28,8 +28,6 @@ package org.panteleyev.persistence.answers;
 
 import org.mockito.invocation.InvocationOnMock;
 import org.mockito.stubbing.Answer;
-import java.time.LocalDate;
-import java.util.Date;
 
 public class ResultSetIntAnswer extends ResultSetAnswer implements Answer<Integer> {
     public ResultSetIntAnswer(Object object) {

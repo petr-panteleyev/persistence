@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2017, Petr Panteleyev <petr@panteleyev.org>
+ * Copyright (c) 2019, Petr Panteleyev <petr@panteleyev.org>
  * All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
@@ -23,35 +23,10 @@
  * ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE
  * POSSIBILITY OF SUCH DAMAGE.
  */
+package org.panteleyev.persistence.model;
 
-package org.panteleyev.persistence.test;
-
-import org.sqlite.SQLiteConfig;
-import org.sqlite.SQLiteDataSource;
-import javax.sql.DataSource;
-import java.util.Objects;
-
-class SQLiteBuilder {
-    private String fileName;
-
-    SQLiteBuilder() {
-    }
-
-    SQLiteBuilder file(String fileName) {
-        this.fileName = fileName;
-        return this;
-    }
-
-    DataSource build() {
-        Objects.requireNonNull(fileName);
-
-        SQLiteConfig config = new SQLiteConfig();
-        config.enforceForeignKeys(true);
-
-        SQLiteDataSource ds = new SQLiteDataSource(config);
-        ds.setUrl("jdbc:sqlite:" + fileName);
-        ds.setEncoding("UTF-8");
-
-        return ds;
-    }
+public enum EnumType {
+    F1,
+    F2,
+    F3;
 }

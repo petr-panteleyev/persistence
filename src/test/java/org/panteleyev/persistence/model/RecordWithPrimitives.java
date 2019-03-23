@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2017, 2018, Petr Panteleyev <petr@panteleyev.org>
+ * Copyright (c) 2017, 2019, Petr Panteleyev <petr@panteleyev.org>
  * All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
@@ -23,57 +23,73 @@
  * ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE
  * POSSIBILITY OF SUCH DAMAGE.
  */
-package org.panteleyev.persistence.test.model;
+package org.panteleyev.persistence.model;
 
 import org.panteleyev.persistence.Record;
 import org.panteleyev.persistence.annotations.Column;
-import org.panteleyev.persistence.annotations.RecordBuilder;
+import org.panteleyev.persistence.annotations.PrimaryKey;
 import org.panteleyev.persistence.annotations.Table;
 import java.util.Objects;
 import java.util.Random;
 
-@Table("immutable_primitives_table")
-public class ImmutableRecordWithPrimitives implements Record {
-    @Column(value = Column.ID, primaryKey = true)
+@Table("primitives_table")
+public class RecordWithPrimitives implements Record<Integer> {
+    @PrimaryKey
+    @Column(Column.ID)
     private Integer id;
 
     @Column("a")
-    private final int a;
+    private int a;
     @Column("b")
-    private final boolean b;
+    private boolean b;
     @Column("c")
-    private final long c;
+    private long c;
 
-    @RecordBuilder
-    public ImmutableRecordWithPrimitives(@Column("id") Integer id,
-                                         @Column("a") int a,
-                                         @Column("b") boolean b,
-                                         @Column("c") long c) {
+    public RecordWithPrimitives() {
+        this(0, 0, false, 0l);
+    }
+
+    public RecordWithPrimitives(Integer id, int a, boolean b, long c) {
         this.id = id;
         this.a = a;
         this.b = b;
         this.c = c;
     }
 
-    @Override
     public int getId() {
         return id;
+    }
+
+    public void setId(int id) {
+        this.id = id;
     }
 
     public int getA() {
         return a;
     }
 
+    public void setA(int a) {
+        this.a = a;
+    }
+
     public boolean getB() {
         return b;
+    }
+
+    public void setB(boolean b) {
+        this.b = b;
     }
 
     public long getC() {
         return c;
     }
 
-    public static ImmutableRecordWithPrimitives newRecord(Integer id, Random random) {
-        return new ImmutableRecordWithPrimitives(
+    public void setC(long c) {
+        this.c = c;
+    }
+
+    public static RecordWithPrimitives newRecord(Integer id, Random random) {
+        return new RecordWithPrimitives(
                 id,
                 random.nextInt(),
                 random.nextBoolean(),
@@ -81,12 +97,12 @@ public class ImmutableRecordWithPrimitives implements Record {
         );
     }
 
-    public static ImmutableRecordWithPrimitives newNullRecord(Integer id) {
-        return new ImmutableRecordWithPrimitives(
+    public static RecordWithPrimitives newNullRecord(Integer id) {
+        return new RecordWithPrimitives(
                 id,
                 0,
                 false,
-                0L
+                0l
         );
     }
 
@@ -96,8 +112,8 @@ public class ImmutableRecordWithPrimitives implements Record {
             return true;
         }
 
-        if (o instanceof ImmutableRecordWithPrimitives) {
-            ImmutableRecordWithPrimitives that = (ImmutableRecordWithPrimitives) o;
+        if (o instanceof RecordWithPrimitives) {
+            RecordWithPrimitives that = (RecordWithPrimitives) o;
 
             return Objects.equals(this.id, that.id)
                     && Objects.equals(this.a, that.a)

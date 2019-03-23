@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2017, Petr Panteleyev <petr@panteleyev.org>
+ * Copyright (c) 2019, Petr Panteleyev <petr@panteleyev.org>
  * All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
@@ -23,30 +23,58 @@
  * ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE
  * POSSIBILITY OF SUCH DAMAGE.
  */
-package org.panteleyev.persistence;
 
-import java.util.Set;
+package org.panteleyev.persistence.model;
 
-interface DAOTypes {
-    String TYPE_BIG_DECIMAL = "java.math.BigDecimal";
-    String TYPE_DATE        = "java.util.Date";
-    String TYPE_LOCAL_DATE  = "java.time.LocalDate";
-    String TYPE_LONG        = "java.lang.Long";
-    String TYPE_INTEGER     = "java.lang.Integer";
-    String TYPE_BOOLEAN     = "java.lang.Boolean";
-    String TYPE_STRING      = "java.lang.String";
-    String TYPE_UUID        = "java.util.UUID";
-    String TYPE_LONG_PRIM   = "long";
-    String TYPE_INT         = "int";
-    String TYPE_BOOL        = "boolean";
-    String TYPE_BYTE_ARRAY  = "byte[]";
+import org.panteleyev.persistence.Record;
+import org.panteleyev.persistence.annotations.Column;
+import org.panteleyev.persistence.annotations.PrimaryKey;
+import org.panteleyev.persistence.annotations.Table;
+import java.util.Objects;
+import java.util.UUID;
 
-    String TYPE_ENUM        = "*** enum ***";
+@Table("table_with_uuid")
+public class RecordWithUuid implements Record<Integer> {
+    @PrimaryKey
+    @Column(Column.ID)
+    private int id;
 
-    // Exception strings
-    String CLASS_NOT_ANNOTATED = "Class is not properly annotated: ";
-    String FIELD_NOT_ANNOTATED = "Field is not properly annotated: ";
-    String BAD_FIELD_TYPE   = "Unsupported field type: ";
+    @Column(value = "uuid", isJson = true)
+    private UUID uuid;
 
-    Set<String> AUTO_INCREMENT_TYPES = Set.of(TYPE_INT, TYPE_INTEGER, TYPE_LONG, TYPE_LONG_PRIM);
+    public RecordWithUuid() {
+    }
+
+    public RecordWithUuid(int id, UUID uuid) {
+        this.id = id;
+        this.uuid = uuid;
+    }
+
+    public int getId() {
+        return id;
+    }
+
+    public UUID getUuid() {
+        return uuid;
+    }
+
+    @Override
+    public boolean equals(Object object) {
+        if (this == object) {
+            return true;
+        }
+
+        if (!(object instanceof RecordWithUuid)) {
+            return false;
+        }
+
+        var that = (RecordWithUuid) object;
+        return this.id == that.id
+            && Objects.equals(this.uuid, that.uuid);
+    }
+
+    @Override
+    public int hashCode() {
+        return Objects.hash(id, uuid);
+    }
 }

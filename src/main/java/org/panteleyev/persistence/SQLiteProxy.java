@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2017, 2018, Petr Panteleyev <petr@panteleyev.org>
+ * Copyright (c) 2017, 2019, Petr Panteleyev <petr@panteleyev.org>
  * All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
@@ -28,6 +28,7 @@ package org.panteleyev.persistence;
 
 import org.panteleyev.persistence.annotations.Column;
 import org.panteleyev.persistence.annotations.ForeignKey;
+import org.panteleyev.persistence.annotations.PrimaryKey;
 import java.sql.Connection;
 import java.sql.PreparedStatement;
 import java.sql.ResultSet;
@@ -39,17 +40,18 @@ import java.util.function.BiFunction;
 
 class SQLiteProxy implements DAOProxy, DAOTypes {
     private static final Map<String, BiFunction<ResultSet, String, ?>> RESULT_SET_READERS = Map.ofEntries(
-            Map.entry(TYPE_STRING, OBJECT_READER),
-            Map.entry(TYPE_INTEGER, OBJECT_READER),
-            Map.entry(TYPE_INT, INT_READER),
-            Map.entry(TYPE_LONG, OBJECT_READER),
-            Map.entry(TYPE_LONG_PRIM, LONG_READER),
-            Map.entry(TYPE_BOOL, INT_BOOL_READER),
-            Map.entry(TYPE_BOOLEAN, INT_BOOLEAN_READER),
-            Map.entry(TYPE_BIG_DECIMAL, BIG_DECIMAL_READER),
-            Map.entry(TYPE_DATE, DATE_READER),
-            Map.entry(TYPE_LOCAL_DATE, LOCAL_DATE_READER),
-            Map.entry(TYPE_BYTE_ARRAY, BYTE_ARRAY_READER)
+        Map.entry(TYPE_STRING, OBJECT_READER),
+        Map.entry(TYPE_INTEGER, OBJECT_READER),
+        Map.entry(TYPE_INT, INT_READER),
+        Map.entry(TYPE_LONG, OBJECT_READER),
+        Map.entry(TYPE_LONG_PRIM, LONG_READER),
+        Map.entry(TYPE_BOOL, INT_BOOL_READER),
+        Map.entry(TYPE_BOOLEAN, INT_BOOLEAN_READER),
+        Map.entry(TYPE_BIG_DECIMAL, BIG_DECIMAL_READER),
+        Map.entry(TYPE_DATE, DATE_READER),
+        Map.entry(TYPE_LOCAL_DATE, LOCAL_DATE_READER),
+        Map.entry(TYPE_BYTE_ARRAY, BYTE_ARRAY_READER),
+        Map.entry(TYPE_UUID, UUID_STRING_READER)
     );
 
     @Override
@@ -57,15 +59,27 @@ class SQLiteProxy implements DAOProxy, DAOTypes {
         return RESULT_SET_READERS;
     }
 
-    public String getColumnString(Column column, ForeignKey foreignKey, String typeName, List<String> constraints) {
+    public String getColumnString(Column column, PrimaryKey primaryKey, ForeignKey foreignKey, String typeName,
+                                  List<String> constraints) {
         var b = new StringBuilder();
 
         switch (typeName) {
             case TYPE_STRING:
-            case TYPE_ENUM:
-                b.append("VARCHAR(")
+                if (column.isJson()) {
+                    b.append("BLOB");
+                } else {
+                    b.append("VARCHAR(")
                         .append(column.length())
                         .append(")");
+                }
+                break;
+            case TYPE_UUID:
+                b.append("VARCHAR(36)");
+                break;
+            case TYPE_ENUM:
+                b.append("VARCHAR(")
+                    .append(column.length())
+                    .append(")");
                 break;
             case TYPE_BOOL:
             case TYPE_BOOLEAN:
@@ -81,8 +95,8 @@ class SQLiteProxy implements DAOProxy, DAOTypes {
                 break;
             case TYPE_BIG_DECIMAL:
                 b.append("VARCHAR(")
-                        .append(column.precision() + 1)
-                        .append(")");
+                    .append(column.precision() + 1)
+                    .append(")");
                 break;
             case TYPE_BYTE_ARRAY:
                 b.append("BLOB");
@@ -91,7 +105,7 @@ class SQLiteProxy implements DAOProxy, DAOTypes {
                 throw new IllegalStateException(BAD_FIELD_TYPE);
         }
 
-        if (column.primaryKey()) {
+        if (primaryKey != null) {
             b.append(" PRIMARY KEY");
         }
 
@@ -107,9 +121,7 @@ class SQLiteProxy implements DAOProxy, DAOTypes {
     }
 
     public void truncate(Connection connection, List<Class<? extends Record>> tables) {
-        tables.forEach(table -> {
-            deleteAll(connection, table);
-        });
+        tables.forEach(table -> deleteAll(connection, table));
 
         try (var statement = connection.createStatement()) {
             statement.execute("VACUUM");

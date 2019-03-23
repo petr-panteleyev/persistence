@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2016, 2018, Petr Panteleyev <petr@panteleyev.org>
+ * Copyright (c) 2016, 2019, Petr Panteleyev <petr@panteleyev.org>
  * All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
@@ -29,6 +29,7 @@ package org.panteleyev.persistence;
 import org.panteleyev.persistence.annotations.Column;
 import org.panteleyev.persistence.annotations.ForeignKey;
 import org.panteleyev.persistence.annotations.Index;
+import org.panteleyev.persistence.annotations.PrimaryKey;
 import org.panteleyev.persistence.annotations.RecordBuilder;
 import org.panteleyev.persistence.annotations.Table;
 import javax.sql.DataSource;
@@ -50,12 +51,40 @@ import java.util.List;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.stream.Collectors;
+import static org.panteleyev.persistence.DAOTypes.AUTO_INCREMENT_TYPES;
+import static org.panteleyev.persistence.DAOTypes.CLASS_NOT_ANNOTATED;
 import static org.panteleyev.persistence.DAOTypes.TYPE_ENUM;
+import static org.panteleyev.persistence.DAOTypes.TYPE_INT;
+import static org.panteleyev.persistence.DAOTypes.TYPE_INTEGER;
+import static org.panteleyev.persistence.DAOTypes.TYPE_LONG;
+import static org.panteleyev.persistence.DAOTypes.TYPE_LONG_PRIM;
 
 /**
  * Persistence API entry point.
  */
 public class DAO {
+    /**
+     * Supported database types.
+     */
+    public enum DatabaseType {
+        SQLITE(SQLiteProxy.class),
+        MYSQL(MySQLProxy.class);
+
+        private final Class<? extends DAOProxy> proxyClass;
+
+        DatabaseType(Class<? extends DAOProxy> proxyClass) {
+            this.proxyClass = proxyClass;
+        }
+
+        DAOProxy newProxy() {
+            try {
+                return proxyClass.getDeclaredConstructor().newInstance();
+            } catch (ReflectiveOperationException ex) {
+                throw new RuntimeException(ex);
+            }
+        }
+    }
+
     static class ParameterHandle {
         final String name;
         final Class<?> type;
@@ -76,20 +105,53 @@ public class DAO {
         }
     }
 
+    static class PrimaryKeyHandle {
+        private final Field field;
+        private final VarHandle handle;
+        private final boolean autoIncrement;
+
+        PrimaryKeyHandle(Field field, VarHandle handle, boolean autoIncrement) {
+            this.field = field;
+            this.handle = handle;
+            this.autoIncrement = autoIncrement;
+        }
+
+        public Field getField() {
+            return field;
+        }
+
+        public VarHandle getHandle() {
+            return handle;
+        }
+
+        public boolean isAutoIncrement() {
+            return autoIncrement;
+        }
+    }
+
     private static final String NOT_ANNOTATED = "Class is not properly annotated";
 
-    private final Map<Class<? extends Record>, Integer> primaryKeys = new ConcurrentHashMap<>();
-    private final Map<Class<? extends Record>, String> insertSQL = new ConcurrentHashMap<>();
-    private final Map<Class<? extends Record>, String> updateSQL = new ConcurrentHashMap<>();
-    private final Map<Class<? extends Record>, String> deleteSQL = new ConcurrentHashMap<>();
+    private final Map<Class<? extends Record>, Number> primaryKeys = new ConcurrentHashMap<>();
 
-    private final Map<Class<? extends Record>, ConstructorHandle> constructorMap = new ConcurrentHashMap<>();
-    private final Map<Class<? extends Record>, Map<String, VarHandle>> columnMap = new ConcurrentHashMap<>();
+    private final Map<Class<? extends Record>, String> selectAllSql = new ConcurrentHashMap<>();
+    private final Map<Class<? extends Record>, String> selectByIdSql = new ConcurrentHashMap<>();
+    private final Map<Class<? extends Record>, String> insertSql = new ConcurrentHashMap<>();
+    private final Map<Class<? extends Record>, String> updateSql = new ConcurrentHashMap<>();
+    private final Map<Class<? extends Record>, String> deleteSql = new ConcurrentHashMap<>();
+
+    private static final Map<Class<? extends Record>, PrimaryKeyHandle> PRIMARY_KEY_HANDLE_MAP
+        = new ConcurrentHashMap<>();
+    private static final Map<Class<? extends Record>, ConstructorHandle> CONSTRUCTOR_MAP = new ConcurrentHashMap<>();
+    private static final Map<Class<? extends Record>, Map<String, VarHandle>> COLUMN_MAP = new ConcurrentHashMap<>();
 
     private DataSource datasource;
 
     private DAOProxy proxy;
 
+    /**
+     * Creates DAO object. Data source should be set later using {@link #setDataSource(DataSource, DatabaseType)}
+     * method.
+     */
     public DAO() {
     }
 
@@ -98,9 +160,15 @@ public class DAO {
         this.proxy = proxy;
     }
 
-    public DAO(DataSource ds) {
+    /**
+     * Creates DAO object with predefined data source.
+     *
+     * @param ds           data source
+     * @param databaseType type of the database
+     */
+    public DAO(DataSource ds, DatabaseType databaseType) {
         this.datasource = ds;
-        proxy = setupProxy();
+        proxy = databaseType.newProxy();
     }
 
     /**
@@ -115,33 +183,15 @@ public class DAO {
     /**
      * Sets a new data source.
      *
-     * @param ds data source
+     * @param ds           data source
+     * @param databaseType type of the database
      */
-    public void setDataSource(DataSource ds) {
+    public void setDataSource(DataSource ds, DatabaseType databaseType) {
         this.datasource = ds;
         primaryKeys.clear();
-        insertSQL.clear();
-        deleteSQL.clear();
-        proxy = setupProxy();
-    }
-
-    private DAOProxy setupProxy() {
-        // TODO: figure out better way instead of class name check
-        if (datasource != null) {
-            var dsClass = datasource.getClass().getName().toLowerCase();
-
-            if (dsClass.contains("mysql")) {
-                return new MySQLProxy();
-            }
-
-            if (dsClass.contains("sqlite")) {
-                return new SQLiteProxy();
-            }
-
-            throw new IllegalStateException("Unsupported database type");
-        } else {
-            return null;
-        }
+        insertSql.clear();
+        deleteSql.clear();
+        proxy = databaseType.newProxy();
     }
 
     /**
@@ -155,34 +205,24 @@ public class DAO {
     }
 
     /**
-     * Retrieves record from the database using record ID.
+     * Retrieves record from the database using record primary key.
      *
+     * @param <K>   primary key type
+     * @param <T>   type of the record
      * @param id    record id
      * @param clazz record class
-     * @param <T>   type of the record
      * @return record
      */
-    public <T extends Record> T get(Integer id, Class<? extends T> clazz) {
+    public <K, T extends Record<K>> T get(K id, Class<? extends T> clazz) {
         try (var conn = getDataSource().getConnection()) {
             if (!clazz.isAnnotationPresent(Table.class)) {
                 throw new IllegalStateException(NOT_ANNOTATED);
             }
-            var ann = clazz.getAnnotation(Table.class);
 
-            var tableName = ann.value();
-            var idName = Column.ID;
+            var ps = conn.prepareStatement(getSelectByIdSql(clazz));
 
-            for (var field : clazz.getDeclaredFields()) {
-                var fieldAnn = field.getAnnotation(Column.class);
-                if (fieldAnn != null && fieldAnn.primaryKey()) {
-                    idName = fieldAnn.value();
-                    break;
-                }
-            }
-
-            var sql = "SELECT * FROM " + tableName + " WHERE " + idName + "=?";
-            var ps = conn.prepareStatement(sql);
-            ps.setInt(1, id);
+            var primaryKey = findPrimaryKey(clazz);
+            setColumnToPreparedStatement(ps, 1, primaryKey.field, id);
 
             try (var set = ps.executeQuery()) {
                 return (set.next()) ? fromSQL(set, clazz) : null;
@@ -195,8 +235,8 @@ public class DAO {
     /**
      * Retrieves all records of the specified type.
      *
-     * @param clazz record class
      * @param <T>   type of the record
+     * @param clazz record class
      * @return list of records
      */
     public <T extends Record> List<T> getAll(Class<T> clazz) {
@@ -207,8 +247,7 @@ public class DAO {
                 throw new IllegalStateException(NOT_ANNOTATED);
             }
 
-            var tableName = clazz.getAnnotation(Table.class).value();
-            var ps = conn.prepareStatement("SELECT * FROM " + tableName);
+            var ps = conn.prepareStatement(getSelectAllSql(clazz));
             try (var set = ps.executeQuery()) {
                 while (set.next()) {
                     result.add(fromSQL(set, clazz));
@@ -223,22 +262,22 @@ public class DAO {
     /**
      * Retrieves all records of the specified type and fills the map.
      *
-     * @param clazz  record class
+     * @param <K>    type of the primary key
      * @param <T>    type of the record
+     * @param clazz  record class
      * @param result map to fill
      */
-    public <T extends Record> void getAll(Class<T> clazz, Map<Integer, T> result) {
+    public <K, T extends Record<K>> void getAll(Class<T> clazz, Map<K, T> result) {
         try (var conn = getDataSource().getConnection()) {
             if (!clazz.isAnnotationPresent(Table.class)) {
                 throw new IllegalStateException(NOT_ANNOTATED);
             }
 
-            var tableName = clazz.getAnnotation(Table.class).value();
-            var ps = conn.prepareStatement("SELECT * FROM " + tableName);
+            var ps = conn.prepareStatement(getSelectAllSql(clazz));
             try (var set = ps.executeQuery()) {
                 while (set.next()) {
                     T r = fromSQL(set, clazz);
-                    result.put(r.getId(), r);
+                    result.put(r.getPrimaryKey(), r);
                 }
             }
         } catch (SQLException ex) {
@@ -302,13 +341,13 @@ public class DAO {
     }
 
     <T extends Record> T fromSQL(ResultSet set, Class<T> clazz) {
-        var builder = constructorMap.computeIfAbsent(clazz, DAO::cacheConstructorHandle);
+        var builder = CONSTRUCTOR_MAP.computeIfAbsent(clazz, DAO::cacheConstructorHandle);
 
         try {
             if (builder != null) {
                 return fromSQL(set, builder);
             } else {
-                var columns = columnMap.computeIfAbsent(clazz, DAO::computeColumns);
+                var columns = COLUMN_MAP.computeIfAbsent(clazz, DAO::computeColumns);
                 if (columns.isEmpty()) {
                     throw new IllegalStateException("Class " + clazz.getName() + " has no column annotations");
                 }
@@ -350,8 +389,8 @@ public class DAO {
 
                 try {
                     var b = new StringBuilder("CREATE TABLE IF NOT EXISTS ")
-                            .append(table.value())
-                            .append(" (");
+                        .append(table.value())
+                        .append(" (");
 
                     var constraints = new ArrayList<String>();
                     var indexed = new HashSet<Field>();
@@ -364,7 +403,7 @@ public class DAO {
 
                             var getterType = field.getType();
                             var typeName = getterType.isEnum() ?
-                                    TYPE_ENUM : getterType.getTypeName();
+                                TYPE_ENUM : getterType.getTypeName();
 
                             if (!first) {
                                 b.append(",");
@@ -372,8 +411,8 @@ public class DAO {
                             first = false;
 
                             b.append(fName).append(" ")
-                                    .append(proxy.getColumnString(column,
-                                            field.getAnnotation(ForeignKey.class), typeName, constraints));
+                                .append(proxy.getColumnString(column, field.getAnnotation(PrimaryKey.class),
+                                    field.getAnnotation(ForeignKey.class), typeName, constraints));
 
                             if (field.isAnnotationPresent(Index.class)) {
                                 indexed.add(field);
@@ -383,7 +422,7 @@ public class DAO {
 
                     if (!constraints.isEmpty()) {
                         b.append(",");
-                        b.append(constraints.stream().collect(Collectors.joining(",")));
+                        b.append(String.join(",", constraints));
                     }
 
                     b.append(")");
@@ -403,8 +442,35 @@ public class DAO {
         }
     }
 
+    String getSelectAllSql(Class<? extends Record> recordClass) {
+        return selectAllSql.computeIfAbsent(recordClass, clazz -> {
+            var table = clazz.getAnnotation(Table.class);
+            if (table == null) {
+                throw new IllegalStateException(CLASS_NOT_ANNOTATED + clazz.getName());
+            }
+
+            var columnString = Arrays.stream(clazz.getDeclaredFields())
+                .filter(field -> field.isAnnotationPresent(Column.class))
+                .map(field -> proxy.getSelectColumnString(field))
+                .collect(Collectors.joining(","));
+
+            if (columnString.isEmpty()) {
+                throw new IllegalStateException("No fields");
+            }
+
+            return "SELECT " + columnString + " FROM " + table.value();
+        });
+    }
+
+    String getSelectByIdSql(Class<? extends Record> recordClass) {
+        return selectByIdSql.computeIfAbsent(recordClass, clazz ->
+            getSelectAllSql(clazz) +
+                " WHERE " +
+                proxy.getWhereColumnString(findPrimaryKey(clazz).field) + "=?");
+    }
+
     private String getInsertSQL(Record record) {
-        return insertSQL.computeIfAbsent(record.getClass(), clazz -> {
+        return insertSql.computeIfAbsent(record.getClass(), clazz -> {
             var b = new StringBuilder("INSERT INTO ");
 
             var table = clazz.getAnnotation(Table.class);
@@ -416,14 +482,17 @@ public class DAO {
 
             int fCount = 0;
 
+            var valueString = new StringBuilder();
             try {
                 for (var field : clazz.getDeclaredFields()) {
                     var column = field.getAnnotation(Column.class);
                     if (column != null) {
                         if (fCount != 0) {
                             b.append(",");
+                            valueString.append(",");
                         }
                         b.append(column.value());
+                        valueString.append(proxy.getInsertColumnPattern(field));
                         fCount++;
                     }
                 }
@@ -435,23 +504,16 @@ public class DAO {
                 throw new IllegalStateException("No fields");
             }
 
-            b.append(") VALUES (");
+            b.append(") VALUES (")
+                .append(valueString)
+                .append(")");
 
-            while (fCount != 0) {
-                b.append("?");
-                if (fCount != 1) {
-                    b.append(",");
-                }
-                fCount--;
-            }
-
-            b.append(")");
             return b.toString();
         });
     }
 
     private String getUpdateSQL(Record record) {
-        return updateSQL.computeIfAbsent(record.getClass(), clazz -> {
+        return updateSql.computeIfAbsent(record.getClass(), clazz -> {
             var b = new StringBuilder("update ");
 
             var table = clazz.getAnnotation(Table.class);
@@ -466,12 +528,13 @@ public class DAO {
             try {
                 for (var field : record.getClass().getDeclaredFields()) {
                     var column = field.getAnnotation(Column.class);
-                    if (column != null && !column.primaryKey()) {
+                    if (column != null && field.getAnnotation(PrimaryKey.class) == null) {
                         if (fCount != 0) {
                             b.append(", ");
                         }
                         b.append(column.value())
-                                .append("=?");
+                            .append("=")
+                            .append(proxy.getUpdateColumnPattern(field));
                         fCount++;
                     }
                 }
@@ -483,42 +546,28 @@ public class DAO {
                 throw new IllegalStateException("No fields");
             }
 
-            b.append(" WHERE id=?");
+            var primaryKeyField = findPrimaryKey(clazz);
+            b.append(" WHERE ")
+                .append(proxy.getWhereColumnString(primaryKeyField.field))
+                .append("=?");
 
             return b.toString();
         });
     }
 
-    private String getDeleteSQL(Class<? extends Record> clazz) {
-        return deleteSQL.computeIfAbsent(clazz, cl -> {
+    String getDeleteSQL(Class<? extends Record> clazz) {
+        return deleteSql.computeIfAbsent(clazz, cl -> {
             var b = new StringBuilder("DELETE FROM ");
             var table = cl.getAnnotation(Table.class);
             if (table == null) {
                 throw new IllegalStateException(NOT_ANNOTATED);
             }
-            b.append(table.value())
-                    .append(" WHERE ");
+            b.append(table.value());
 
-            String idName = null;
-
-            try {
-                for (var field : clazz.getDeclaredFields()) {
-                    var column = field.getAnnotation(Column.class);
-                    if (column != null && column.primaryKey()) {
-                        idName = column.value();
-                        break;
-                    }
-                }
-            } catch (SecurityException ex) {
-                throw new RuntimeException(ex);
-            }
-
-            if (idName == null) {
-                throw new IllegalStateException(NOT_ANNOTATED);
-            }
-
-            b.append(idName)
-                    .append("=?");
+            var primaryKeyField = findPrimaryKey(clazz);
+            b.append(" WHERE ")
+                .append(proxy.getWhereColumnString(primaryKeyField.field))
+                .append("=?");
 
             return b.toString();
         });
@@ -528,31 +577,46 @@ public class DAO {
         return getDeleteSQL(record.getClass());
     }
 
+    private void setColumnToPreparedStatement(Record record, PreparedStatement st, int index, Field field,
+                                              VarHandle handle) throws SQLException
+    {
+        var fieldType = field.getType();
+
+        Object value = handle.get(record);
+        var typeName = fieldType.isEnum() ? TYPE_ENUM : fieldType.getTypeName();
+        proxy.setFieldData(st, index, value, typeName);
+    }
+
+    private void setColumnToPreparedStatement(PreparedStatement st, int index, Field field,
+                                              Object value) throws SQLException
+    {
+        var fieldType = field.getType();
+        var typeName = fieldType.isEnum() ? TYPE_ENUM : fieldType.getTypeName();
+        proxy.setFieldData(st, index, value, typeName);
+    }
+
     private void setData(Record record, PreparedStatement st, boolean update) {
         try {
             int index = 1;
 
-            var columns = columnMap.computeIfAbsent(record.getClass(), DAO::computeColumns);
+            var columns = COLUMN_MAP.computeIfAbsent(record.getClass(), DAO::computeColumns);
 
             for (var field : record.getClass().getDeclaredFields()) {
                 if (field.isAnnotationPresent(Column.class)) {
                     // if update skip ID at this point
                     var fld = field.getAnnotation(Column.class);
-                    if (update && fld.primaryKey()) {
+                    if (update && field.getAnnotation(PrimaryKey.class) != null) {
                         continue;
                     }
 
                     var handle = columns.get(fld.value());
-                    var fieldType = field.getType();
-
-                    Object value = handle.get(record);
-                    var typeName = fieldType.isEnum() ? TYPE_ENUM : fieldType.getTypeName();
-                    proxy.setFieldData(st, index++, value, typeName);
+                    setColumnToPreparedStatement(record, st, index++, field, handle);
                 }
             }
 
             if (update) {
-                st.setInt(index, record.getId());
+                var primaryKey = findPrimaryKey(record.getClass());
+                setColumnToPreparedStatement(record, st, index, primaryKey.field, primaryKey.handle);
             }
         } catch (Exception ex) {
             throw new RuntimeException(ex);
@@ -568,7 +632,9 @@ public class DAO {
 
     private PreparedStatement getDeleteStatement(Record record, Connection conn) throws SQLException {
         PreparedStatement st = conn.prepareStatement(getDeleteSQL(record));
-        st.setInt(1, record.getId());
+
+        var primaryKey = findPrimaryKey(record.getClass());
+        setColumnToPreparedStatement(record, st, 1, primaryKey.field, primaryKey.handle);
         return st;
     }
 
@@ -585,53 +651,85 @@ public class DAO {
      * @param tables list of {@link Record} types
      */
     public void preload(Collection<Class<? extends Record>> tables) {
-        // load primary key max values
-        tables.stream()
-                .filter(x -> x.isAnnotationPresent(Table.class))
-                .forEach(x -> {
-                    Table a = x.getAnnotation(Table.class);
-                    Integer id = getIdMaxValue(a.value());
-                    primaryKeys.put(x, id);
-                });
+        for (var clazz : tables) {
+            var table = clazz.getAnnotation(Table.class);
+            if (table == null) {
+                throw new IllegalStateException(CLASS_NOT_ANNOTATED + clazz.getTypeName());
+            }
+
+            var primaryKey = findPrimaryKey(clazz);
+            if (!primaryKey.isAutoIncrement()) {
+                continue;
+            }
+
+            var fieldTypeName = primaryKey.field.getType().getTypeName();
+            if (!AUTO_INCREMENT_TYPES.contains(fieldTypeName)) {
+                continue;
+            }
+
+            var pattern = proxy.getSelectColumnString(primaryKey.field);
+
+            Number maxValue = 0;
+
+            try (var conn = getDataSource().getConnection()) {
+                var st = conn.prepareStatement("SELECT MAX(" + pattern + ") FROM " + table.value());
+                try (var rs = st.executeQuery()) {
+                    if (rs.next()) {
+                        switch (fieldTypeName) {
+                            case TYPE_INT:
+                            case TYPE_INTEGER:
+                                maxValue = rs.getInt(1);
+                                break;
+                            case TYPE_LONG:
+                            case TYPE_LONG_PRIM:
+                                maxValue = rs.getLong(1);
+                                break;
+                        }
+                    }
+                }
+            } catch (SQLException ex) {
+                throw new RuntimeException(ex);
+            }
+
+            primaryKeys.put(clazz, maxValue);
+        }
     }
 
     /**
      * Returns next available primary key value. This method is thread safe.
+     * Only numeric types (int, long, {@link Integer}, {@link Long}) are currently supported.
      *
+     * @param <K>   primary key type
      * @param clazz record class
      * @return primary key value
      */
-    public Integer generatePrimaryKey(Class<? extends Record> clazz) {
-        return primaryKeys.compute(clazz, (k, v) -> (v == null) ? 1 : ++v);
-    }
-
-    private Integer getIdMaxValue(String tableName) {
-        try (var conn = getDataSource().getConnection()) {
-            var st = conn.prepareStatement("SELECT id FROM " + tableName + " ORDER BY id DESC");
-            try (var rs = st.executeQuery()) {
-                if (rs.next()) {
-                    return rs.getInt(1);
-                } else {
-                    return 0;
-                }
-            }
-        } catch (SQLException ex) {
-            throw new RuntimeException(ex);
+    public <K extends Number> K generatePrimaryKey(Class<? extends Record<K>> clazz) {
+        var primaryKey = findPrimaryKey(clazz);
+        if (!primaryKey.isAutoIncrement()) {
+            throw new IllegalStateException("Primary key for class " + clazz + " is not set to auto increment");
         }
+
+        return (K) primaryKeys.compute(clazz, (k, v) -> {
+            if (v instanceof Integer) {
+                return (Integer) v + 1;
+            } else if (v instanceof Long) {
+                return (Long) v + 1;
+            } else {
+                return 1;
+            }
+        });
     }
 
     /**
      * This method inserts new record with predefined id into the database. No attempt to generate
      * new id is made. Calling code must ensure that predefined id is unique.
      *
-     * @param <T>    type of the record
      * @param record record
-     * @return inserted record
      * @throws IllegalArgumentException if id of the record is 0
      */
-    public <T extends Record> T insert(T record) {
+    public void insert(Record record) {
         try (var conn = getDataSource().getConnection()) {
-            return insert(conn, record);
+            insert(conn, record);
         } catch (SQLException ex) {
             throw new RuntimeException(ex);
         }
@@ -641,21 +739,13 @@ public class DAO {
      * This method inserts new record with predefined id into the database. No attempt to generate
      * new id is made. Calling code must ensure that predefined id is unique.
      *
-     * @param <T>    type of the record
      * @param conn   SQL connection
      * @param record record
-     * @return inserted record
      * @throws IllegalArgumentException if id of the record is 0
      */
-    public <T extends Record> T insert(Connection conn, T record) {
-        if (record.getId() == 0) {
-            throw new IllegalArgumentException("id == 0");
-        }
-
+    public void insert(Connection conn, Record record) {
         try (var st = getPreparedStatement(record, conn, false)) {
             st.executeUpdate();
-            //noinspection unchecked
-            return get(record.getId(), (Class<T>) record.getClass());
         } catch (SQLException ex) {
             throw new RuntimeException(ex);
         }
@@ -722,13 +812,10 @@ public class DAO {
      * not changed.
      *
      * @param record record
-     * @param <T>    record type
-     * @return updated record
-     * @throws IllegalArgumentException if id of the record is 0
      */
-    public <T extends Record> T update(T record) {
+    public void update(Record record) {
         try (var conn = getDataSource().getConnection()) {
-            return update(conn, record);
+            update(conn, record);
         } catch (SQLException ex) {
             throw new RuntimeException(ex);
         }
@@ -740,19 +827,10 @@ public class DAO {
      *
      * @param conn   SQL connection
      * @param record record
-     * @param <T>    record type
-     * @return updated record
-     * @throws IllegalArgumentException if id of the record is 0
      */
-    public <T extends Record> T update(Connection conn, T record) {
-        if (record.getId() == 0) {
-            throw new IllegalArgumentException("id == 0");
-        }
-
+    public void update(Connection conn, Record record) {
         try (var ps = getPreparedStatement(record, conn, true)) {
             ps.executeUpdate();
-            //noinspection unchecked
-            return get(record.getId(), (Class<T>) record.getClass());
         } catch (SQLException ex) {
             throw new RuntimeException(ex);
         }
@@ -873,10 +951,10 @@ public class DAO {
 
         for (int i = 0; i < constructor.getParameterCount(); i++) {
             var fieldName = Arrays.stream(paramAnnotations[i])
-                    .filter(a -> a instanceof Column)
-                    .findAny()
-                    .map(a -> ((Column) a).value())
-                    .orElseThrow(RuntimeException::new);
+                .filter(a -> a instanceof Column)
+                .findAny()
+                .map(a -> ((Column) a).value())
+                .orElseThrow(RuntimeException::new);
             parameterHandles.add(new ParameterHandle(fieldName, paramTypes[i]));
         }
 
@@ -891,5 +969,38 @@ public class DAO {
         } catch (Exception ex) {
             throw new RuntimeException(ex);
         }
+    }
+
+    /**
+     * This method returns field that represents primary key.
+     *
+     * @param recordClass table class
+     * @return primary key field
+     * @throws IllegalStateException if there is no primary key
+     */
+    static PrimaryKeyHandle findPrimaryKey(Class<? extends Record> recordClass) {
+        return PRIMARY_KEY_HANDLE_MAP.computeIfAbsent(recordClass, clazz -> {
+            for (var field : clazz.getDeclaredFields()) {
+                var column = field.getAnnotation(Column.class);
+                if (column == null) {
+                    continue;
+                }
+                var primaryKey = field.getAnnotation(PrimaryKey.class);
+                if (primaryKey == null) {
+                    continue;
+                }
+
+                var columns = COLUMN_MAP.computeIfAbsent(clazz, DAO::computeColumns);
+                return new PrimaryKeyHandle(field, columns.get(column.value()), primaryKey.isAutoIncrement());
+            }
+
+            throw new IllegalStateException("No primary key defined for " + clazz.getTypeName());
+        });
+    }
+
+    static <K> K getPrimaryKey(Record<K> record) {
+        var primaryKey = findPrimaryKey(record.getClass());
+        //noinspection unchecked
+        return (K) primaryKey.handle.get(record);
     }
 }

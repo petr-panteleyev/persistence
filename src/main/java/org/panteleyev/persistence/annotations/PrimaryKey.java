@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2017, Petr Panteleyev <petr@panteleyev.org>
+ * Copyright (c) 2019, Petr Panteleyev <petr@panteleyev.org>
  * All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
@@ -23,22 +23,25 @@
  * ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE
  * POSSIBILITY OF SUCH DAMAGE.
  */
-package org.panteleyev.persistence.test;
 
-import org.testng.annotations.AfterMethod;
-import org.testng.annotations.BeforeMethod;
-import org.testng.annotations.Test;
+package org.panteleyev.persistence.annotations;
 
-@Test(groups = "sqlite")
-public class TestRecordsSQLite extends RecordsTestBase {
+import java.lang.annotation.ElementType;
+import java.lang.annotation.Retention;
+import java.lang.annotation.RetentionPolicy;
+import java.lang.annotation.Target;
 
-    @BeforeMethod
-    public void setup() throws Exception {
-        setupSQLite();
-    }
-
-    @AfterMethod
-    public void cleanup() throws Exception {
-        cleanupSQLite();
-    }
+/**
+ * Defines if annotated column serves as a primary key.
+ */
+@Retention(RetentionPolicy.RUNTIME)
+@Target(ElementType.FIELD)
+public @interface PrimaryKey {
+    /**
+     * Defines if primary key is auto-incremented integer value. Works only for fields of type int and Integer. For
+     * other types attribute is ignored.
+     *
+     * @return if primary key is auto-incremented
+     */
+    boolean isAutoIncrement() default true;
 }

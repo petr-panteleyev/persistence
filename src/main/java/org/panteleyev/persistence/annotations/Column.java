@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, Petr Panteleyev <petr@panteleyev.org>
+ * Copyright (c) 2018, 2019, Petr Panteleyev <petr@panteleyev.org>
  * All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
@@ -31,6 +31,9 @@ import java.lang.annotation.Retention;
 import java.lang.annotation.RetentionPolicy;
 import java.lang.annotation.Target;
 
+/**
+ * Defines database column.
+ */
 @Retention(RetentionPolicy.RUNTIME)
 @Target({ElementType.FIELD, ElementType.PARAMETER})
 public @interface Column {
@@ -67,12 +70,6 @@ public @interface Column {
     boolean nullable() default true;
 
     /**
-     * Defines if the field is a primary key.
-     * @return <code>true</code> if the field is a primary key
-     */
-    boolean primaryKey() default false;
-
-    /**
      * Defines length of the field.
      * @return length of the field
      */
@@ -89,4 +86,10 @@ public @interface Column {
      * @return SCALE
      */
     int scale() default SCALE;
+
+    /**
+     * Defines JSON column. Applicable to String data type only, ignored for other types.
+     * @return if column contains json
+     */
+    boolean isJson() default false;
 }

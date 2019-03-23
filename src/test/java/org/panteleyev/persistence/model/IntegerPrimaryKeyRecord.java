@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2017, Petr Panteleyev <petr@panteleyev.org>
+ * Copyright (c) 2019, Petr Panteleyev <petr@panteleyev.org>
  * All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
@@ -23,22 +23,44 @@
  * ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE
  * POSSIBILITY OF SUCH DAMAGE.
  */
-package org.panteleyev.persistence.test;
 
-import org.testng.annotations.AfterMethod;
-import org.testng.annotations.BeforeMethod;
-import org.testng.annotations.Test;
+package org.panteleyev.persistence.model;
 
-@Test(groups = "mysql")
-public class TestRecordsMySQL extends RecordsTestBase {
+import org.panteleyev.persistence.Record;
+import org.panteleyev.persistence.annotations.Column;
+import org.panteleyev.persistence.annotations.PrimaryKey;
+import org.panteleyev.persistence.annotations.Table;
 
-    @BeforeMethod
-    public void setup() throws Exception {
-        setupMySQL();
+@Table("integer_primary_key")
+public class IntegerPrimaryKeyRecord implements Record<Integer> {
+    @PrimaryKey
+    @Column("prim_key")
+    private int primKey;
+
+    @Column("value")
+    private String value;
+
+    public IntegerPrimaryKeyRecord() {
     }
 
-    @AfterMethod
-    public void cleanup() throws Exception {
-        cleanupMySQL();
+    public IntegerPrimaryKeyRecord(int primKey, String value) {
+        this.primKey = primKey;
+        this.value = value;
+    }
+
+    public int getPrimKey() {
+        return primKey;
+    }
+
+    public void setPrimKey(int primKey) {
+        this.primKey = primKey;
+    }
+
+    public String getValue() {
+        return value;
+    }
+
+    public void setValue(String value) {
+        this.value = value;
     }
 }

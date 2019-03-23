@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2017, Petr Panteleyev <petr@panteleyev.org>
+ * Copyright (c) 2019, Petr Panteleyev <petr@panteleyev.org>
  * All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
@@ -23,22 +23,30 @@
  * ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE
  * POSSIBILITY OF SUCH DAMAGE.
  */
-package org.panteleyev.persistence.test;
 
-import org.testng.annotations.AfterMethod;
-import org.testng.annotations.BeforeMethod;
+package org.panteleyev.persistence;
+
+import org.panteleyev.persistence.model.NotAnnotatedRecord;
+import org.panteleyev.persistence.model.RecordWithAllTypes;
+import org.testng.Assert;
 import org.testng.annotations.Test;
+import static org.panteleyev.persistence.base.Base.GENERIC_GROUP;
 
-@Test(groups = "mysql")
-public class TestTableCreationMySQL extends TableCreationTestBase {
-
-    @BeforeMethod
-    public void setup() throws Exception {
-        setupMySQL();
+@Test(groups = GENERIC_GROUP)
+public class UtilitiesTest {
+    @Test
+    public void testGetTableName() {
+        Assert.assertEquals(Record.getTableName(RecordWithAllTypes.class), "all_types_table");
+        Assert.assertEquals(new RecordWithAllTypes().getTableName(), "all_types_table");
     }
 
-    @AfterMethod
-    public void cleanup() throws Exception {
-        cleanupMySQL();
+    @Test(expectedExceptions = {IllegalStateException.class})
+    public void testGetTableNameStaticNegative() {
+        Record.getTableName(NotAnnotatedRecord.class);
+    }
+
+    @Test(expectedExceptions = {IllegalStateException.class})
+    public void testGetTableNameNegative() {
+        new NotAnnotatedRecord().getTableName();
     }
 }

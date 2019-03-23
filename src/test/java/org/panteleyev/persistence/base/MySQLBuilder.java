@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2016, 2017, Petr Panteleyev <petr@panteleyev.org>
+ * Copyright (c) 2019, Petr Panteleyev <petr@panteleyev.org>
  * All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
@@ -23,32 +23,55 @@
  * ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE
  * POSSIBILITY OF SUCH DAMAGE.
  */
-package org.panteleyev.persistence.test;
 
-import org.panteleyev.persistence.test.model.ImmutableRecord;
-import org.panteleyev.persistence.test.model.ImmutableRecordWithPrimitives;
-import org.panteleyev.persistence.test.model.RecordWithAllTypes;
-import org.panteleyev.persistence.test.model.RecordWithOptionals;
-import org.panteleyev.persistence.test.model.RecordWithPrimitives;
-import org.testng.Assert;
-import org.testng.annotations.Test;
-import java.util.Arrays;
+package org.panteleyev.persistence.base;
 
-class TableCreationTestBase extends Base {
-    @Test
-    public void testCreateTables() throws Exception {
-        getDao().createTables(Arrays.asList(
-                RecordWithAllTypes.class,
-                RecordWithOptionals.class,
-                RecordWithPrimitives.class,
-                ImmutableRecord.class,
-                ImmutableRecordWithPrimitives.class
-        ));
+import com.mysql.cj.jdbc.MysqlDataSource;
+import javax.sql.DataSource;
+import java.util.TimeZone;
 
-        Assert.assertTrue(getDao().getAll(RecordWithAllTypes.class).isEmpty());
-        Assert.assertTrue(getDao().getAll(RecordWithOptionals.class).isEmpty());
-        Assert.assertTrue(getDao().getAll(RecordWithPrimitives.class).isEmpty());
-        Assert.assertTrue(getDao().getAll(ImmutableRecord.class).isEmpty());
-        Assert.assertTrue(getDao().getAll(ImmutableRecordWithPrimitives.class).isEmpty());
+public class MySQLBuilder {
+    private String host;
+    private int port = 3306;
+    private String dbName;
+    private String user;
+    private String password;
+
+    public DataSource build() throws Exception {
+        MysqlDataSource ds = new MysqlDataSource();
+        ds.setDatabaseName(dbName);
+        ds.setPort(port);
+        ds.setServerName(host);
+        ds.setUser(user);
+        ds.setPassword(password);
+        ds.setCharacterEncoding("utf8");
+        ds.setUseSSL(false);
+        ds.setServerTimezone(TimeZone.getDefault().getID());
+        return ds;
+    }
+
+    public MySQLBuilder host(String host) {
+        this.host = host;
+        return this;
+    }
+
+    public MySQLBuilder port(int port) {
+        this.port = port;
+        return this;
+    }
+
+    public MySQLBuilder name(String name) {
+        this.dbName = name;
+        return this;
+    }
+
+    public MySQLBuilder user(String user) {
+        this.user = user;
+        return this;
+    }
+
+    public MySQLBuilder password(String password) {
+        this.password = password;
+        return this;
     }
 }

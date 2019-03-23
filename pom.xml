@@ -4,7 +4,7 @@
     <modelVersion>4.0.0</modelVersion>
     <groupId>org.panteleyev</groupId>
     <artifactId>persistence</artifactId>
-    <version>18.2.0</version>
+    <version>19.1.0</version>
     <packaging>jar</packaging>
     <name>${project.groupId}:${project.artifactId}</name>
     <description>Annotation wrapper for SQLite and MySQL database.</description>
@@ -24,33 +24,57 @@
         </developer>
     </developers>
     <scm>
-        <connection>scm:git:git://github.com/petr-panteleyev/java-persistence.git</connection>
-        <developerConnection>scm:git:ssh://github.com:petr-panteleyev/java-persistence.git</developerConnection>
-        <url>https://github.com/petr-panteleyev/java-persistence/tree/master</url>
+        <connection>scm:git:git://github.com/petr-panteleyev/persistence.git</connection>
+        <developerConnection>scm:git:ssh://github.com:petr-panteleyev/persistence.git</developerConnection>
+        <url>https://github.com/petr-panteleyev/persistence/tree/master</url>
     </scm>
+
+    <properties>
+        <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
+        <maven.compiler.source>11</maven.compiler.source>
+        <maven.compiler.target>11</maven.compiler.target>
+        <mysql-connector-version>8.0.15</mysql-connector-version>
+        <gson-version>2.8.5</gson-version>
+        <mockito-version>2.24.5</mockito-version>
+        <testng-version>6.14.3</testng-version>
+        <sqlite-jdbc-version>3.15.1</sqlite-jdbc-version>
+        <!-- Test properties -->
+        <test.mysql.host>localhost</test.mysql.host>
+        <test.mysql.port>3306</test.mysql.port>
+        <test.mysql.database>TestDB</test.mysql.database>
+        <test.mysql.user></test.mysql.user>
+        <test.mysql.password></test.mysql.password>
+    </properties>
+
     <dependencies>
         <dependency>
             <groupId>org.testng</groupId>
             <artifactId>testng</artifactId>
-            <version>6.11</version>
+            <version>${testng-version}</version>
             <scope>test</scope>
         </dependency>
         <dependency>
             <groupId>org.xerial</groupId>
             <artifactId>sqlite-jdbc</artifactId>
-            <version>3.15.1</version>
+            <version>${sqlite-jdbc-version}</version>
             <scope>test</scope>
         </dependency>
         <dependency>
             <groupId>mysql</groupId>
             <artifactId>mysql-connector-java</artifactId>
-            <version>5.1.42</version>
+            <version>${mysql-connector-version}</version>
             <scope>test</scope>
         </dependency>
         <dependency>
             <groupId>org.mockito</groupId>
             <artifactId>mockito-core</artifactId>
-            <version>2.13.0</version>
+            <version>${mockito-version}</version>
+            <scope>test</scope>
+        </dependency>
+        <dependency>
+            <groupId>com.google.code.gson</groupId>
+            <artifactId>gson</artifactId>
+            <version>${gson-version}</version>
             <scope>test</scope>
         </dependency>
     </dependencies>
@@ -59,22 +83,22 @@
             <plugin>
                 <groupId>org.apache.maven.plugins</groupId>
                 <artifactId>maven-compiler-plugin</artifactId>
-                <version>3.7.0</version>
+                <version>3.8.0</version>
                 <configuration>
-                    <release>10</release>
+                    <release>11</release>
                 </configuration>
                 <dependencies>
                     <dependency>
                         <groupId>org.ow2.asm</groupId>
                         <artifactId>asm</artifactId>
-                        <version>6.1</version>
+                        <version>7.1</version>
                     </dependency>
                 </dependencies>
             </plugin>
             <plugin>
                 <groupId>org.apache.maven.plugins</groupId>
                 <artifactId>maven-source-plugin</artifactId>
-                <version>2.2.1</version>
+                <version>3.0.1</version>
                 <executions>
                     <execution>
                         <id>attach-sources</id>
@@ -87,16 +111,28 @@
             <plugin>
                 <groupId>org.apache.maven.plugins</groupId>
                 <artifactId>maven-surefire-plugin</artifactId>
-                <version>2.22.0</version>
+                <version>3.0.0-M3</version>
+                <configuration>
+                    <argLine>
+                        -Dmysql.host=${test.mysql.host}
+                        -Dmysql.port=${test.mysql.port}
+                        -Dmysql.user=${test.mysql.user}
+                        -Dmysql.password=${test.mysql.password}
+                        -Dmysql.database=${test.mysql.database}
+                    </argLine>
+                    <suiteXmlFiles>
+                        <suiteXmlFile>src/test/resources/testng.xml</suiteXmlFile>
+                    </suiteXmlFiles>
+                </configuration>
             </plugin>
             <plugin>
                 <groupId>org.apache.maven.plugins</groupId>
                 <artifactId>maven-javadoc-plugin</artifactId>
-                <version>3.0.0</version>
+                <version>3.1.0</version>
                 <configuration>
                     <notimestamp>true</notimestamp>
                     <author>false</author>
-                    <bottom><![CDATA[Copyright &copy; 2018, Petr Panteleyev]]></bottom>
+                    <bottom><![CDATA[Copyright &copy; 2018, 2019, Petr Panteleyev]]></bottom>
                     <additionalOptions>-html5</additionalOptions>
                 </configuration>
                 <executions>
@@ -111,7 +147,7 @@
                     <dependency>
                         <groupId>org.apache.commons</groupId>
                         <artifactId>commons-lang3</artifactId>
-                        <version>3.7</version>
+                        <version>3.8.1</version>
                     </dependency>
                 </dependencies>
             </plugin>
@@ -129,11 +165,17 @@
                     </execution>
                 </executions>
             </plugin>
+            <plugin>
+                <groupId>org.sonatype.plugins</groupId>
+                <artifactId>nexus-staging-maven-plugin</artifactId>
+                <version>1.6.8</version>
+                <extensions>true</extensions>
+                <configuration>
+                    <serverId>ossrh</serverId>
+                    <nexusUrl>https://oss.sonatype.org/</nexusUrl>
+                    <autoReleaseAfterClose>false</autoReleaseAfterClose>
+                </configuration>
+            </plugin>
         </plugins>
     </build>
-    <properties>
-        <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
-        <maven.compiler.source>10</maven.compiler.source>
-        <maven.compiler.target>10</maven.compiler.target>
-    </properties>
 </project>

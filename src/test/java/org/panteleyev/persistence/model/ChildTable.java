@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2017, 2018, Petr Panteleyev <petr@panteleyev.org>
+ * Copyright (c) 2017, 2019, Petr Panteleyev <petr@panteleyev.org>
  * All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
@@ -24,18 +24,20 @@
  * POSSIBILITY OF SUCH DAMAGE.
  */
 
-package org.panteleyev.persistence.test.model;
+package org.panteleyev.persistence.model;
 
 import org.panteleyev.persistence.Record;
 import org.panteleyev.persistence.annotations.Column;
 import org.panteleyev.persistence.annotations.ForeignKey;
+import org.panteleyev.persistence.annotations.PrimaryKey;
 import org.panteleyev.persistence.annotations.RecordBuilder;
 import org.panteleyev.persistence.annotations.ReferenceOption;
 import org.panteleyev.persistence.annotations.Table;
 
 @Table("child_table")
-public class ChildTable implements Record {
-    @Column(value = Column.ID, primaryKey = true)
+public class ChildTable implements Record<Integer> {
+    @PrimaryKey
+    @Column(Column.ID)
     private int id;
 
     @Column("null_value")
@@ -77,7 +79,6 @@ public class ChildTable implements Record {
         this.noneValue = noneValue;
     }
 
-    @Override
     public int getId() {
         return id;
     }
