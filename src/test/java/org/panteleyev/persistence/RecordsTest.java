@@ -31,17 +31,20 @@ import org.panteleyev.persistence.model.ImmutableBinaryRecord;
 import org.panteleyev.persistence.model.RecordWithAllTypes;
 import org.panteleyev.persistence.model.RecordWithOptionals;
 import org.panteleyev.persistence.model.RecordWithPrimitives;
+import org.panteleyev.persistence.model.UuidPrimaryKeyRecord;
+import org.testng.Assert;
 import org.testng.annotations.Test;
 import java.util.Arrays;
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.UUID;
 import static org.panteleyev.persistence.base.Base.MYSQL_GROUP;
 import static org.panteleyev.persistence.base.Base.SQLITE_GROUP;
 import static org.testng.Assert.assertEquals;
 import static org.testng.Assert.assertNotEquals;
-import static org.testng.Assert.assertNull;
+import static org.testng.Assert.assertTrue;
 
 @Test(groups = {SQLITE_GROUP, MYSQL_GROUP})
 public class RecordsTest extends Base {
@@ -57,7 +60,7 @@ public class RecordsTest extends Base {
         getDao().createTables(Collections.singletonList(clazz));
         getDao().preload(Collections.singletonList(clazz));
 
-        Map<Integer, Record<Integer>> idMap = new HashMap<>();
+        var idMap = new HashMap<Integer, Record<Integer>>();
 
         // Create all new records
         for (int i = 0; i < RECORD_COUNT_1; i++) {
@@ -75,10 +78,10 @@ public class RecordsTest extends Base {
         getDao().createTables(ALL_CLASSES);
         getDao().preload(ALL_CLASSES);
 
-        final Map<Integer, Record<Integer>> idMap1 = new HashMap<>();
-        final Map<Integer, Record<Integer>> idMap2 = new HashMap<>();
+        var idMap1 = new HashMap<Integer, Record<Integer>>();
+        var idMap2 = new HashMap<Integer, Record<Integer>>();
 
-        Thread t1 = new Thread(() -> {
+        var t1 = new Thread(() -> {
             for (int i = 0; i < RECORD_COUNT_1; i++) {
                 try {
                     var newRecord = givenRandomRecord(RecordWithAllTypes.class);
@@ -90,7 +93,7 @@ public class RecordsTest extends Base {
             }
         });
 
-        Thread t2 = new Thread(() -> {
+        var t2 = new Thread(() -> {
             for (int i = 0; i < RECORD_COUNT_2; i++) {
                 try {
                     var newRecord = givenRandomRecord(RecordWithOptionals.class);
@@ -113,7 +116,7 @@ public class RecordsTest extends Base {
     }
 
     @Test(dataProvider = "recordClasses")
-    public void testRecordPutGet(Class<? extends Record> clazz) throws Exception {
+    public void testRecordPutGet(Class<? extends Record<Integer>> clazz) throws Exception {
         getDao().createTables(Collections.singletonList(clazz));
         getDao().preload(Collections.singletonList(clazz));
 
@@ -121,8 +124,8 @@ public class RecordsTest extends Base {
             var record = givenRandomRecord(clazz);
 
             getDao().insert(record);
-            var result = getDao().get(record.getPrimaryKey(), clazz);
-            assertEquals(result, record);
+            getDao().get(record.getPrimaryKey(), clazz)
+                .ifPresentOrElse(result -> assertEquals(result, record), Assert::fail);
         }
     }
 
@@ -135,24 +138,22 @@ public class RecordsTest extends Base {
         for (int i = 0; i < RECORD_COUNT_1; i++) {
             var record = givenRandomRecord(clazz);
             getDao().insert(record);
-            var result =  getDao().get(record.getPrimaryKey(), clazz);
-            assertEquals(result, record);
+            getDao().get(record.getPrimaryKey(), clazz)
+                .ifPresentOrElse(result -> assertEquals(result, record), Assert::fail);
 
             getDao().delete(record);
-            result = getDao().get(record.getPrimaryKey(), clazz);
-            assertNull(result);
+            assertTrue(getDao().get(record.getPrimaryKey(), clazz).isEmpty());
         }
 
         // Delete by id
         for (int i = 0; i < RECORD_COUNT_1; i++) {
             var record = givenRandomRecord(clazz);
             getDao().insert(record);
-            var result =  getDao().get(record.getPrimaryKey(), clazz);
-            assertEquals(result, record);
+            getDao().get(record.getPrimaryKey(), clazz)
+                .ifPresentOrElse(result -> assertEquals(result, record), Assert::fail);
 
             getDao().delete(record.getPrimaryKey(), clazz);
-            result = getDao().get(record.getPrimaryKey(), clazz);
-            assertNull(result);
+            assertTrue(getDao().get(record.getPrimaryKey(), clazz).isEmpty());
         }
     }
 
@@ -170,11 +171,11 @@ public class RecordsTest extends Base {
         getDao().update(updated);
 
         var retrievedUpdated = getDao().get(original.getPrimaryKey(), clazz);
-        assertEquals(retrievedUpdated, updated);
+        assertEquals(retrievedUpdated.orElseThrow(), updated);
     }
 
     @Test(dataProvider = "recordClasses")
-    public void testNullFields(Class<? extends Record> clazz) throws Exception {
+    public void testNullFields(Class<? extends Record<Integer>> clazz) throws Exception {
         getDao().createTables(Collections.singletonList(clazz));
         getDao().preload(Collections.singletonList(clazz));
 
@@ -183,7 +184,7 @@ public class RecordsTest extends Base {
         getDao().insert(record);
 
         var retrieved = getDao().get(record.getPrimaryKey(), clazz);
-        assertEquals(retrieved, record);
+        assertEquals(retrieved.orElseThrow(), record);
     }
 
     @Test
@@ -202,7 +203,7 @@ public class RecordsTest extends Base {
         getDao().insert(rMax);
 
         var retrievedMax = getDao().get(rMax.getId(), clazz);
-        assertEquals(retrievedMax, rMax);
+        assertEquals(retrievedMax.orElseThrow(), rMax);
 
         // Min values
         var idMin = getDao().generatePrimaryKey(clazz);
@@ -213,7 +214,7 @@ public class RecordsTest extends Base {
         getDao().insert(rMin);
 
         var retrievedMin = getDao().get(rMin.getId(), clazz);
-        assertEquals(retrievedMin, rMin);
+        assertEquals(retrievedMin.orElseThrow(), rMin);
     }
 
     @Test
@@ -256,7 +257,8 @@ public class RecordsTest extends Base {
     }
 
     private <T extends Record> void checkCreatedRecord(Class<T> clazz, Map<Integer, Record<Integer>> idMap,
-                                                                int count) {
+                                                       int count)
+    {
         // Get all records back in one request
         List<T> result = getDao().getAll(clazz);
 
@@ -269,5 +271,21 @@ public class RecordsTest extends Base {
             .map(Record::getPrimaryKey)
             .distinct()
             .count(), count);
+    }
+
+    @Test
+    public void testWrongId() {
+        var record = new UuidPrimaryKeyRecord(UUID.randomUUID(), UUID.randomUUID().toString());
+
+        getDao().createTables(List.of(UuidPrimaryKeyRecord.class));
+        getDao().preload(List.of(UuidPrimaryKeyRecord.class));
+
+        getDao().insert(record);
+        var retrieved = getDao().get(record.getPrimKey(), UuidPrimaryKeyRecord.class);
+        assertEquals(retrieved.orElseThrow(), record);
+
+        var notFound = getDao().get(UUID.randomUUID(), UuidPrimaryKeyRecord.class);
+        assertTrue(notFound.isEmpty());
+
     }
 }

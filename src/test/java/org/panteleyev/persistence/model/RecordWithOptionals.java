@@ -40,7 +40,7 @@ import java.util.Random;
 import java.util.UUID;
 
 @Table("optionals_table")
-public class RecordWithOptionals implements Record {
+public class RecordWithOptionals implements Record<Integer> {
     @PrimaryKey
     @Column(Column.ID)
     private Integer id;

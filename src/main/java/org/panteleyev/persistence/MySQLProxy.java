@@ -108,7 +108,11 @@ class MySQLProxy implements DAOProxy, DAOTypes {
                     .append(")");
                 break;
             case TYPE_UUID:
-                b.append("BINARY(16)");
+                if (column.storeUuidAsBinary()) {
+                    b.append("BINARY(16)");
+                } else {
+                    b.append("VARCHAR(36)");
+                }
                 break;
             default:
                 throw new IllegalStateException(BAD_FIELD_TYPE + typeName);
@@ -120,6 +124,10 @@ class MySQLProxy implements DAOProxy, DAOTypes {
 
         if (!column.nullable()) {
             b.append(" NOT NULL");
+        }
+
+        if (column.unique()) {
+            b.append(" UNIQUE");
         }
 
         if (foreignKey != null) {
@@ -161,7 +169,7 @@ class MySQLProxy implements DAOProxy, DAOTypes {
         var column = field.getAnnotation(Column.class);
         Objects.requireNonNull(column, FIELD_NOT_ANNOTATED + field.getName());
 
-        if (field.getType().getTypeName().equals(TYPE_UUID)) {
+        if (field.getType().getTypeName().equals(TYPE_UUID) && column.storeUuidAsBinary()) {
             return "BIN_TO_UUID(" + column.value() + ") AS " + column.value();
         } else {
             return column.value();
@@ -170,7 +178,10 @@ class MySQLProxy implements DAOProxy, DAOTypes {
 
     @Override
     public String getInsertColumnPattern(Field field) {
-        if (field.getType().getTypeName().equals(TYPE_UUID)) {
+        var column = field.getAnnotation(Column.class);
+        Objects.requireNonNull(column, FIELD_NOT_ANNOTATED + field.getName());
+
+        if (field.getType().getTypeName().equals(TYPE_UUID) && column.storeUuidAsBinary()) {
             return "UUID_TO_BIN(?)";
         } else {
             return "?";
@@ -187,7 +198,7 @@ class MySQLProxy implements DAOProxy, DAOTypes {
         var column = field.getAnnotation(Column.class);
         Objects.requireNonNull(column, FIELD_NOT_ANNOTATED + field.getName());
 
-        if (field.getType().getTypeName().equals(TYPE_UUID)) {
+        if (field.getType().getTypeName().equals(TYPE_UUID) && column.storeUuidAsBinary()) {
             return "BIN_TO_UUID(" + column.value() + ")";
         } else {
             return column.value();

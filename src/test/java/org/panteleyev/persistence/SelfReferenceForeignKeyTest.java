@@ -26,20 +26,18 @@
 package org.panteleyev.persistence;
 
 import org.panteleyev.persistence.base.Base;
-import org.panteleyev.persistence.model.ChildTable;
-import org.panteleyev.persistence.model.ParentTable;
+import org.panteleyev.persistence.model.SelfReferencingTable;
 import org.testng.Assert;
 import org.testng.annotations.Test;
-import java.util.Arrays;
 import java.util.List;
 import java.util.UUID;
 import static org.panteleyev.persistence.base.Base.MYSQL_GROUP;
 import static org.panteleyev.persistence.base.Base.SQLITE_GROUP;
-import static org.testng.Assert.assertEquals;
 import static org.testng.Assert.assertNull;
+import static org.testng.Assert.assertTrue;
 
 @Test(groups = {SQLITE_GROUP, MYSQL_GROUP})
-public class ForeignKeyTest extends Base {
+public class SelfReferenceForeignKeyTest extends Base {
 
     private void deleteForbidden(Record record) {
         var exception = false;
@@ -48,10 +46,10 @@ public class ForeignKeyTest extends Base {
         } catch (Exception ex) {
             exception = true;
         }
-        Assert.assertTrue(exception);
+        assertTrue(exception);
     }
 
-    private void updateForbidden(ParentTable record) {
+    private void updateForbidden(SelfReferencingTable record) {
         var exception = false;
         try {
             record.setValue(UUID.randomUUID().toString());
@@ -59,38 +57,39 @@ public class ForeignKeyTest extends Base {
         } catch (Exception ex) {
             exception = true;
         }
-        Assert.assertTrue(exception);
+        assertTrue(exception);
     }
 
     @Test
     public void testForeignKeyOnDelete() {
-        List<Class<? extends Record>> classes = Arrays.asList(ParentTable.class, ChildTable.class);
+        List<Class<? extends Record>> classes = List.of(SelfReferencingTable.class);
 
         getDao().createTables(classes);
         getDao().preload(classes);
 
-        var cascade = new ParentTable(getDao().generatePrimaryKey(ParentTable.class),
+        var cascade = new SelfReferencingTable(getDao().generatePrimaryKey(SelfReferencingTable.class),
             UUID.randomUUID().toString());
         getDao().insert(cascade);
 
-        var restrict = new ParentTable(getDao().generatePrimaryKey(ParentTable.class),
+        var restrict = new SelfReferencingTable(getDao().generatePrimaryKey(SelfReferencingTable.class),
             UUID.randomUUID().toString());
         getDao().insert(restrict);
 
-        var setNull = new ParentTable(getDao().generatePrimaryKey(ParentTable.class),
+        var setNull = new SelfReferencingTable(getDao().generatePrimaryKey(SelfReferencingTable.class),
             UUID.randomUUID().toString());
         getDao().insert(setNull);
 
-        var noAction = new ParentTable(getDao().generatePrimaryKey(ParentTable.class),
+        var noAction = new SelfReferencingTable(getDao().generatePrimaryKey(SelfReferencingTable.class),
             UUID.randomUUID().toString());
         getDao().insert(noAction);
 
-        var none = new ParentTable(getDao().generatePrimaryKey(ParentTable.class),
+        var none = new SelfReferencingTable(getDao().generatePrimaryKey(SelfReferencingTable.class),
             UUID.randomUUID().toString());
         getDao().insert(none);
 
-        var table = new ChildTable(
-            getDao().generatePrimaryKey(ChildTable.class),
+        var table = new SelfReferencingTable(
+            getDao().generatePrimaryKey(SelfReferencingTable.class),
+            UUID.randomUUID().toString(),
             setNull.getValue(),
             cascade.getValue(),
             restrict.getValue(),
@@ -105,40 +104,45 @@ public class ForeignKeyTest extends Base {
 
         // Set null
         getDao().delete(setNull);
-        getDao().get(table.getId(), ChildTable.class)
+        getDao().get(table.getId(), SelfReferencingTable.class)
             .ifPresentOrElse(setNullCheck -> assertNull(setNullCheck.getNullValue()), Assert::fail);
 
         // Cascade
         getDao().delete(cascade);
-        var cascadeCheck = getDao().get(table.getId(), ChildTable.class);
-        Assert.assertTrue(cascadeCheck.isEmpty());
+        var cascadeCheck = getDao().get(table.getId(), SelfReferencingTable.class);
+        assertTrue(cascadeCheck.isEmpty());
     }
 
     @Test
     public void testForeignKeyOnUpdate() {
-        List<Class<? extends Record>> classes = Arrays.asList(ParentTable.class, ChildTable.class);
+        List<Class<? extends Record>> classes = List.of(SelfReferencingTable.class);
 
         getDao().createTables(classes);
         getDao().preload(classes);
 
-        var cascade = new ParentTable(getDao().generatePrimaryKey(ParentTable.class), UUID.randomUUID().toString());
+        var cascade = new SelfReferencingTable(getDao().generatePrimaryKey(SelfReferencingTable.class),
+            UUID.randomUUID().toString());
         getDao().insert(cascade);
 
-        var restrict = new ParentTable(getDao().generatePrimaryKey(ParentTable.class), UUID.randomUUID().toString());
+        var restrict = new SelfReferencingTable(getDao().generatePrimaryKey(SelfReferencingTable.class),
+            UUID.randomUUID().toString());
         getDao().insert(restrict);
 
-        var setNull = new ParentTable(getDao().generatePrimaryKey(ParentTable.class), UUID.randomUUID().toString());
+        var setNull = new SelfReferencingTable(getDao().generatePrimaryKey(SelfReferencingTable.class),
+            UUID.randomUUID().toString());
         getDao().insert(setNull);
 
-        var noAction = new ParentTable(getDao().generatePrimaryKey(ParentTable.class), UUID.randomUUID().toString());
+        var noAction = new SelfReferencingTable(getDao().generatePrimaryKey(SelfReferencingTable.class),
+            UUID.randomUUID().toString());
         getDao().insert(noAction);
 
-        var none = new ParentTable(getDao().generatePrimaryKey(ParentTable.class),
+        var none = new SelfReferencingTable(getDao().generatePrimaryKey(SelfReferencingTable.class),
             UUID.randomUUID().toString());
         getDao().insert(none);
 
-        var table = new ChildTable(
-            getDao().generatePrimaryKey(ChildTable.class),
+        var table = new SelfReferencingTable(
+            getDao().generatePrimaryKey(SelfReferencingTable.class),
+            UUID.randomUUID().toString(),
             setNull.getValue(),
             cascade.getValue(),
             restrict.getValue(),
@@ -151,17 +155,23 @@ public class ForeignKeyTest extends Base {
         updateForbidden(noAction);
         updateForbidden(restrict);
 
-        // Set null
-        setNull.setValue(UUID.randomUUID().toString());
-        getDao().update(setNull);
-        getDao().get(table.getId(), ChildTable.class)
-            .ifPresentOrElse(setNullCheck -> assertNull(setNullCheck.getNullValue()), Assert::fail);
+        if (getDao().getDatabaseType() == DAO.DatabaseType.SQLITE) {
+            // Set null
+            setNull.setValue(UUID.randomUUID().toString());
+            getDao().update(setNull);
+            getDao().get(table.getId(), SelfReferencingTable.class)
+                .ifPresentOrElse(setNullCheck -> assertNull(setNullCheck.getNullValue()), Assert::fail);
 
-        // Cascade
-        cascade.setValue(UUID.randomUUID().toString());
-        getDao().update(cascade);
-        getDao().get(table.getId(), ChildTable.class)
-            .ifPresentOrElse(cascadeCheck -> assertEquals(cascadeCheck.getCascadeValue(), cascade.getValue()),
-                Assert::fail);
+            // Cascade
+            cascade.setValue(UUID.randomUUID().toString());
+            getDao().update(cascade);
+            var cascadeCheck = getDao().get(table.getId(), SelfReferencingTable.class);
+            Assert.assertEquals(cascadeCheck.map(SelfReferencingTable::getCascadeValue).orElseThrow(),
+                cascade.getValue());
+        } else if (getDao().getDatabaseType() == DAO.DatabaseType.MYSQL) {
+            // Mysql does not support this for INNODB
+            updateForbidden(setNull);
+            updateForbidden(cascade);
+        }
     }
 }

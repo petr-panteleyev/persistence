@@ -28,6 +28,7 @@ package org.panteleyev.persistence;
 
 import org.panteleyev.persistence.base.Base;
 import org.panteleyev.persistence.model.StringPrimaryKeyRecord;
+import org.testng.Assert;
 import org.testng.annotations.Test;
 import java.util.Collections;
 import java.util.UUID;
@@ -48,14 +49,15 @@ public class StringPrimaryKeyTest extends Base {
 
         getDao().insert(record);
 
-        var retrieved = getDao().get(id, StringPrimaryKeyRecord.class);
-        assertEquals(retrieved, record);
+        getDao().get(id, StringPrimaryKeyRecord.class)
+            .ifPresentOrElse(retrieved -> assertEquals(retrieved, record), Assert::fail);
 
         var newValue = UUID.randomUUID().toString();
         getDao().update(new StringPrimaryKeyRecord(record.getPrimKey(), newValue));
 
-        var updated = getDao().get(id, StringPrimaryKeyRecord.class);
-        assertEquals(updated.getPrimKey(), record.getPrimKey());
-        assertEquals(updated.getValue(), newValue);
+        getDao().get(id, StringPrimaryKeyRecord.class).ifPresentOrElse(updated -> {
+            assertEquals(updated.getPrimKey(), record.getPrimKey());
+            assertEquals(updated.getValue(), newValue);
+        }, Assert::fail);
     }
 }

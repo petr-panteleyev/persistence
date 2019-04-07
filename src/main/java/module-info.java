@@ -101,7 +101,7 @@ class Book implements Record {
     }
 
     public String getTitle() {
-        return title
+        return title;
     }
 }
  </code></pre>
@@ -158,7 +158,7 @@ class Book implements Record {
  <tr>
  <td>{@link java.util.UUID}</td>
  <td>VARCHAR(36)</td>
- <td>BINARY(16)</td>
+ <td>BINARY(16) or VARCHAR(36) depending on {@link Column#storeUuidAsBinary()}</td>
  <td>For MySQL the following conversion functions are used between string and binary representation:
  <code>BIN_TO_UUID()</code> and <code>UUID_TO_BIN()</code>
  </td>
@@ -180,13 +180,13 @@ public class ParentTable implements Record {
 }
  </code></pre>
 
- <p>This will produce the following SQL for indexed field:<br><code>CREATE UNIQUE INDEX data ON parent_table(data)</code></p>
+ <p>This will produce the following SQL for indexed column:<br><code>CREATE UNIQUE INDEX data ON parent_table(data)</code></p>
 
  <pre><code>
 {@literal @}Table("child_table")
 public class ChildTable implements Record {
     {@literal @}Column("parent_data")
-    {@literal @}ForeignKey(table = ParentTable.class, field = "data",
+    {@literal @}ForeignKey(table = ParentTable.class, column = "data",
         onDelete = ReferenceOption.RESTRICT, onUpdate = ReferenceOption.CASCADE)
     private final String parentData;
 

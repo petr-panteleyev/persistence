@@ -33,56 +33,54 @@ import org.panteleyev.persistence.annotations.Table;
 import java.util.Objects;
 import java.util.UUID;
 
-@Table("table_with_uuid")
-public class RecordWithUuid implements Record<Integer> {
+@Table("uuid_binary_primary_key")
+public class UuidBinaryPrimaryKeyRecord implements Record<UUID> {
     @PrimaryKey
-    @Column(Column.ID)
-    private int id;
+    @Column(value = "prim_key", storeUuidAsBinary = true)
+    private UUID primKey;
 
-    @Column(value = "uuid")
-    private UUID uuid;
-    @Column(value = "uuidBinary", storeUuidAsBinary = true)
-    private UUID uuidBin;
+    @Column("value")
+    private String value;
 
-    public RecordWithUuid() {
+    public UuidBinaryPrimaryKeyRecord() {
     }
 
-    public RecordWithUuid(int id, UUID uuid, UUID uuidBin) {
-        this.id = id;
-        this.uuid = uuid;
-        this.uuidBin = uuidBin;
+    public UuidBinaryPrimaryKeyRecord(UUID primKey, String value) {
+        this.primKey = primKey;
+        this.value = value;
     }
 
-    public int getId() {
-        return id;
+    public UUID getPrimKey() {
+        return primKey;
     }
 
-    public UUID getUuid() {
-        return uuid;
+    public void setPrimKey(UUID primKey) {
+        this.primKey = primKey;
     }
 
-    public UUID getUuidBin() {
-        return uuidBin;
+    public String getValue() {
+        return value;
+    }
+
+    public void setValue(String value) {
+        this.value = value;
     }
 
     @Override
-    public boolean equals(Object object) {
-        if (this == object) {
+    public boolean equals(Object o) {
+        if (this == o) {
             return true;
         }
-
-        if (!(object instanceof RecordWithUuid)) {
+        if (o == null || getClass() != o.getClass()) {
             return false;
         }
-
-        var that = (RecordWithUuid) object;
-        return this.id == that.id
-            && Objects.equals(this.uuid, that.uuid)
-            && Objects.equals(this.uuidBin, that.uuidBin);
+        var that = (UuidBinaryPrimaryKeyRecord) o;
+        return Objects.equals(primKey, that.primKey) &&
+            Objects.equals(value, that.value);
     }
 
     @Override
     public int hashCode() {
-        return Objects.hash(id, uuid, uuidBin);
+        return Objects.hash(primKey, value);
     }
 }

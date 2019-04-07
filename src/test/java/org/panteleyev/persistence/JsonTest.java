@@ -29,6 +29,7 @@ package org.panteleyev.persistence;
 import com.google.gson.JsonParser;
 import org.panteleyev.persistence.base.Base;
 import org.panteleyev.persistence.model.RecordWithJson;
+import org.testng.Assert;
 import org.testng.annotations.DataProvider;
 import org.testng.annotations.Test;
 import java.util.Collections;
@@ -73,9 +74,10 @@ public class JsonTest extends Base {
 
         getDao().insert(record);
 
-        var retrieved = getDao().get(id, RecordWithJson.class);
-        assertEquals(retrieved.getId(), record.getId());
-        assertJsonEquals(retrieved.getJson(), record.getJson());
+        getDao().get(id, RecordWithJson.class).ifPresentOrElse(retrieved -> {
+            assertEquals(retrieved.getId(), record.getId());
+            assertJsonEquals(retrieved.getJson(), record.getJson());
+        }, Assert::fail);
     }
 
     private static void assertJsonEquals(String actual, String expected) {

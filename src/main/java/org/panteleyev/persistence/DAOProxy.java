@@ -147,7 +147,7 @@ interface DAOProxy {
     BiFunction<ResultSet, String, UUID> UUID_STRING_READER = (ResultSet rs, String name) -> {
         try {
             String uuid = rs.getString(name);
-            return UUID.fromString(uuid);
+            return uuid == null ? null : UUID.fromString(uuid);
         } catch (SQLException ex) {
             throw new RuntimeException(ex);
         }
@@ -282,7 +282,7 @@ interface DAOProxy {
         }
 
         var parentTableName = parentTableClass.getAnnotation(Table.class).value();
-        var parentFieldName = key.field();
+        var parentFieldName = key.column();
 
         var fk = new StringBuilder();
 

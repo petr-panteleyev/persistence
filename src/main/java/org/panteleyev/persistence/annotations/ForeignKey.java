@@ -45,11 +45,11 @@ public @interface ForeignKey {
     Class table();
 
     /**
-     * Referenced field.
+     * Referenced column.
      *
-     * @return field name
+     * @return column name
      */
-    String field() default Column.ID;
+    String column() default Column.ID;
 
     /**
      * ON DELETE reference option.

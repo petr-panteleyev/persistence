@@ -107,6 +107,8 @@ class SQLiteProxy implements DAOProxy, DAOTypes {
 
         if (primaryKey != null) {
             b.append(" PRIMARY KEY");
+        } else if (column.unique()) {
+            b.append(" UNIQUE");
         }
 
         if (!column.nullable()) {

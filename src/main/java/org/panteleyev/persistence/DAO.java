@@ -49,6 +49,7 @@ import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
+import java.util.Optional;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.stream.Collectors;
 import static org.panteleyev.persistence.DAOTypes.AUTO_INCREMENT_TYPES;
@@ -81,6 +82,16 @@ public class DAO {
                 return proxyClass.getDeclaredConstructor().newInstance();
             } catch (ReflectiveOperationException ex) {
                 throw new RuntimeException(ex);
+            }
+        }
+
+        static DatabaseType getProxyType(DAOProxy proxy) {
+            if (proxy instanceof MySQLProxy) {
+                return MYSQL;
+            } else if (proxy instanceof SQLiteProxy) {
+                return SQLITE;
+            } else {
+                throw new IllegalStateException("Unknown proxy implementation");
             }
         }
     }
@@ -147,6 +158,7 @@ public class DAO {
     private DataSource datasource;
 
     private DAOProxy proxy;
+    private DatabaseType databaseType;
 
     /**
      * Creates DAO object. Data source should be set later using {@link #setDataSource(DataSource, DatabaseType)}
@@ -158,6 +170,7 @@ public class DAO {
     // Test only
     DAO(DAOProxy proxy) {
         this.proxy = proxy;
+        databaseType = DatabaseType.getProxyType(proxy);
     }
 
     /**
@@ -169,6 +182,7 @@ public class DAO {
     public DAO(DataSource ds, DatabaseType databaseType) {
         this.datasource = ds;
         proxy = databaseType.newProxy();
+        this.databaseType = databaseType;
     }
 
     /**
@@ -178,6 +192,15 @@ public class DAO {
      */
     public DataSource getDataSource() {
         return datasource;
+    }
+
+    /**
+     * Returns database type for this instance.
+     *
+     * @return database type
+     */
+    public DatabaseType getDatabaseType() {
+        return databaseType;
     }
 
     /**
@@ -192,6 +215,7 @@ public class DAO {
         insertSql.clear();
         deleteSql.clear();
         proxy = databaseType.newProxy();
+        this.databaseType = databaseType;
     }
 
     /**
@@ -213,7 +237,7 @@ public class DAO {
      * @param clazz record class
      * @return record
      */
-    public <K, T extends Record<K>> T get(K id, Class<? extends T> clazz) {
+    public <K, T extends Record<K>> Optional<T> get(K id, Class<? extends T> clazz) {
         try (var conn = getDataSource().getConnection()) {
             if (!clazz.isAnnotationPresent(Table.class)) {
                 throw new IllegalStateException(NOT_ANNOTATED);
@@ -225,7 +249,7 @@ public class DAO {
             setColumnToPreparedStatement(ps, 1, primaryKey.field, id);
 
             try (var set = ps.executeQuery()) {
-                return (set.next()) ? fromSQL(set, clazz) : null;
+                return (set.next()) ? Optional.of(fromSQL(set, clazz)) : Optional.empty();
             }
         } catch (SQLException ex) {
             throw new RuntimeException(ex);
@@ -236,13 +260,14 @@ public class DAO {
      * Retrieves all records of the specified type.
      *
      * @param <T>   type of the record
+     * @param conn  connection
      * @param clazz record class
      * @return list of records
      */
-    public <T extends Record> List<T> getAll(Class<T> clazz) {
+    public <T extends Record> List<T> getAll(Connection conn, Class<T> clazz) {
         var result = new ArrayList<T>();
 
-        try (var conn = getDataSource().getConnection()) {
+        try {
             if (!clazz.isAnnotationPresent(Table.class)) {
                 throw new IllegalStateException(NOT_ANNOTATED);
             }
@@ -260,15 +285,31 @@ public class DAO {
     }
 
     /**
+     * Retrieves all records of the specified type.
+     *
+     * @param <T>   type of the record
+     * @param clazz record class
+     * @return list of records
+     */
+    public <T extends Record> List<T> getAll(Class<T> clazz) {
+        try (var conn = getDataSource().getConnection()) {
+            return getAll(conn, clazz);
+        } catch (SQLException ex) {
+            throw new RuntimeException(ex);
+        }
+    }
+
+    /**
      * Retrieves all records of the specified type and fills the map.
      *
      * @param <K>    type of the primary key
      * @param <T>    type of the record
+     * @param conn   connection
      * @param clazz  record class
      * @param result map to fill
      */
-    public <K, T extends Record<K>> void getAll(Class<T> clazz, Map<K, T> result) {
-        try (var conn = getDataSource().getConnection()) {
+    public <K, T extends Record<K>> void getAll(Connection conn, Class<T> clazz, Map<K, T> result) {
+        try {
             if (!clazz.isAnnotationPresent(Table.class)) {
                 throw new IllegalStateException(NOT_ANNOTATED);
             }
@@ -280,6 +321,22 @@ public class DAO {
                     result.put(r.getPrimaryKey(), r);
                 }
             }
+        } catch (SQLException ex) {
+            throw new RuntimeException(ex);
+        }
+    }
+
+    /**
+     * Retrieves all records of the specified type and fills the map.
+     *
+     * @param <K>    type of the primary key
+     * @param <T>    type of the record
+     * @param clazz  record class
+     * @param result map to fill
+     */
+    public <K, T extends Record<K>> void getAll(Class<T> clazz, Map<K, T> result) {
+        try (var conn = getDataSource().getConnection()) {
+            getAll(conn, clazz, result);
         } catch (SQLException ex) {
             throw new RuntimeException(ex);
         }
@@ -371,7 +428,21 @@ public class DAO {
             throw new IllegalStateException("Database not opened");
         }
 
-        try (var conn = getDataSource().getConnection(); var st = conn.createStatement()) {
+        try (var conn = getDataSource().getConnection()) {
+            createTables(conn, tables);
+        } catch (SQLException ex) {
+            throw new RuntimeException(ex);
+        }
+    }
+
+    /**
+     * This method creates table for the specified classes according to their annotations.
+     *
+     * @param conn   connection
+     * @param tables list of tables
+     */
+    public void createTables(Connection conn, List<Class<? extends Record>> tables) {
+        try (var st = conn.createStatement()) {
             // Step 1: drop tables in reverse order
             for (int index = tables.size() - 1; index >= 0; index--) {
                 var cl = tables.get(index);
@@ -638,9 +709,10 @@ public class DAO {
         return st;
     }
 
-    private PreparedStatement getDeleteStatement(Integer id, Class<? extends Record> clazz, Connection conn) throws SQLException {
+    private <K> PreparedStatement getDeleteStatement(K id, Class<? extends Record<K>> clazz, Connection conn) throws SQLException {
         PreparedStatement st = conn.prepareStatement(getDeleteSQL(clazz));
-        st.setInt(1, id);
+        var primaryKey = findPrimaryKey(clazz);
+        setColumnToPreparedStatement(st, 1, primaryKey.field, id);
         return st;
     }
 
@@ -853,10 +925,11 @@ public class DAO {
     /**
      * Deletes record from the database.
      *
+     * @param <K>   primary key type
      * @param id    id of the record
      * @param clazz record type
      */
-    public void delete(Integer id, Class<? extends Record> clazz) {
+    public <K> void delete(K id, Class<? extends Record<K>> clazz) {
         try (var conn = getDataSource().getConnection(); var ps = getDeleteStatement(id, clazz, conn)) {
             ps.executeUpdate();
         } catch (SQLException ex) {
@@ -896,12 +969,24 @@ public class DAO {
      */
     public void truncate(List<Class<? extends Record>> tables) {
         try (var connection = getDataSource().getConnection()) {
-            proxy.truncate(connection, tables);
-            for (Class<? extends Record> t : tables) {
-                primaryKeys.put(t, 0);
-            }
+            truncate(connection, tables);
         } catch (SQLException ex) {
             throw new RuntimeException(ex);
+        }
+    }
+
+    /**
+     * Truncates tables removing all records. Primary key generation starts from 1 again. For MySQL this operation
+     * uses <code>TRUNCATE TABLE table_name</code> command. As SQLite does not support this command <code>DELETE FROM
+     * table_name</code> is used instead.
+     *
+     * @param conn   connection
+     * @param tables tables to truncate
+     */
+    public void truncate(Connection conn, List<Class<? extends Record>> tables) {
+        proxy.truncate(conn, tables);
+        for (Class<? extends Record> t : tables) {
+            primaryKeys.put(t, 0);
         }
     }
 
@@ -921,7 +1006,21 @@ public class DAO {
      * @param tables table classes
      */
     public void dropTables(List<Class<? extends Record>> tables) {
-        try (var conn = getDataSource().getConnection(); var st = conn.createStatement()) {
+        try (var conn = getDataSource().getConnection()) {
+            dropTables(conn, tables);
+        } catch (SQLException ex) {
+            throw new RuntimeException(ex);
+        }
+    }
+
+    /**
+     * Drops specified tables according to their annotations.
+     *
+     * @param conn   connection
+     * @param tables table classes
+     */
+    public void dropTables(Connection conn, List<Class<? extends Record>> tables) {
+        try (var st = conn.createStatement()) {
             for (Class<? extends Record> t : tables) {
                 st.execute("DROP TABLE " + Record.getTableName(t));
             }

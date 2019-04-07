@@ -1,5 +1,13 @@
 # Change Log
 
+## 19.2.0 - 2019-04-07
+
+* MySQL: Option to store UUID as VARCHAR(36)
+* Additional API methods using connection as parameter
+* Unique option for @Column annotation
+* Delete by id updated to support generic primary key
+* Single get returns Optional (INCOMPATIBLE)
+
 ## 19.1.0 - 2019-03-23
 
 * New annotation for primary key (INCOMPATIBLE)

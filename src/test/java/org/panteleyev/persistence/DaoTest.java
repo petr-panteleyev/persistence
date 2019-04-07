@@ -37,6 +37,7 @@ import org.panteleyev.persistence.model.RecordWithAllTypes;
 import org.panteleyev.persistence.model.RecordWithJson;
 import org.panteleyev.persistence.model.RecordWithOptionals;
 import org.panteleyev.persistence.model.RecordWithUuid;
+import org.panteleyev.persistence.model.UuidBinaryPrimaryKeyRecord;
 import org.panteleyev.persistence.model.UuidPrimaryKeyRecord;
 import org.testng.Assert;
 import org.testng.annotations.DataProvider;
@@ -147,7 +148,7 @@ public class DaoTest {
             {new DAO(new SQLiteProxy()), RecordWithJson.class,
                 "SELECT id,json FROM table_with_json"},
             {new DAO(new SQLiteProxy()), RecordWithUuid.class,
-                "SELECT id,uuid FROM table_with_uuid"},
+                "SELECT id,uuid,uuidBinary FROM table_with_uuid"},
             {new DAO(new SQLiteProxy()), RecordWithOptionals.class,
                 "SELECT id,a,b,c,d,e,f,g,h FROM optionals_table"},
 
@@ -160,7 +161,7 @@ public class DaoTest {
             {new DAO(new MySQLProxy()), RecordWithJson.class,
                 "SELECT id,json FROM table_with_json"},
             {new DAO(new MySQLProxy()), RecordWithUuid.class,
-                "SELECT id,BIN_TO_UUID(uuid) AS uuid FROM table_with_uuid"},
+                "SELECT id,uuid,BIN_TO_UUID(uuidBinary) AS uuidBinary FROM table_with_uuid"},
             {new DAO(new MySQLProxy()), RecordWithOptionals.class,
                 "SELECT id,a,b,c,d,e,f,g,h FROM optionals_table"},
         };
@@ -188,7 +189,9 @@ public class DaoTest {
             {new DAO(new SQLiteProxy()), RecordWithJson.class,
                 "SELECT id,json FROM table_with_json WHERE id=?"},
             {new DAO(new SQLiteProxy()), RecordWithUuid.class,
-                "SELECT id,uuid FROM table_with_uuid WHERE id=?"},
+                "SELECT id,uuid,uuidBinary FROM table_with_uuid WHERE id=?"},
+            {new DAO(new SQLiteProxy()), UuidBinaryPrimaryKeyRecord.class,
+                "SELECT prim_key,value FROM uuid_binary_primary_key WHERE prim_key=?"},
             {new DAO(new SQLiteProxy()), UuidPrimaryKeyRecord.class,
                 "SELECT prim_key,value FROM uuid_primary_key WHERE prim_key=?"},
 
@@ -201,9 +204,11 @@ public class DaoTest {
             {new DAO(new MySQLProxy()), RecordWithJson.class,
                 "SELECT id,json FROM table_with_json WHERE id=?"},
             {new DAO(new MySQLProxy()), RecordWithUuid.class,
-                "SELECT id,BIN_TO_UUID(uuid) AS uuid FROM table_with_uuid WHERE id=?"},
-            {new DAO(new MySQLProxy()), UuidPrimaryKeyRecord.class,
-                "SELECT BIN_TO_UUID(prim_key) AS prim_key,value FROM uuid_primary_key WHERE BIN_TO_UUID(prim_key)=?"},
+                "SELECT id,uuid,BIN_TO_UUID(uuidBinary) AS uuidBinary FROM table_with_uuid WHERE id=?"},
+            {new DAO(new MySQLProxy()), UuidBinaryPrimaryKeyRecord.class,
+                "SELECT BIN_TO_UUID(prim_key) AS prim_key,value FROM uuid_binary_primary_key WHERE BIN_TO_UUID(prim_key)=?"},
+            {new DAO(new SQLiteProxy()), UuidPrimaryKeyRecord.class,
+                "SELECT prim_key,value FROM uuid_primary_key WHERE prim_key=?"},
         };
     }
 

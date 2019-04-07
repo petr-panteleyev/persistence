@@ -38,8 +38,8 @@ public class ParentTable implements Record<Integer> {
     @PrimaryKey
     @Column(Column.ID)
     private int id;
-    @Column("value")
-    @Index(value = "value", unique = true)
+
+    @Column(value = "value", unique = true)
     private String value;
 
     @RecordBuilder

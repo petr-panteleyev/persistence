@@ -35,6 +35,7 @@
         </groups>
         <classes>
             <class name="org.panteleyev.persistence.ForeignKeyTest"/>
+            <class name="org.panteleyev.persistence.SelfReferenceForeignKeyTest"/>
             <class name="org.panteleyev.persistence.JsonTest"/>
             <class name="org.panteleyev.persistence.RecordsTest"/>
             <class name="org.panteleyev.persistence.TableCreationTest"/>
@@ -52,6 +53,7 @@
         </groups>
         <classes>
             <class name="org.panteleyev.persistence.ForeignKeyTest"/>
+            <class name="org.panteleyev.persistence.SelfReferenceForeignKeyTest"/>
             <class name="org.panteleyev.persistence.JsonTest"/>
             <class name="org.panteleyev.persistence.RecordsTest"/>
             <class name="org.panteleyev.persistence.TableCreationTest"/>

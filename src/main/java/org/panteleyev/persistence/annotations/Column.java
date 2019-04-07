@@ -38,40 +38,40 @@ import java.lang.annotation.Target;
 @Target({ElementType.FIELD, ElementType.PARAMETER})
 public @interface Column {
     /**
-     * Most used value for the primary key field.
+     * Most used value for the primary key column.
      */
     String ID = "id";
 
     /**
-     * Default field length.
+     * Default column length.
      */
     int LENGTH = 255;
 
     /**
-     * Default scale of BigDecimal field.
+     * Default scale of BigDecimal column.
      */
     int SCALE = 6;
 
     /**
-     * Default precision of BigDecimal field.
+     * Default precision of BigDecimal column.
      */
     int PRECISION = 15;
 
     /**
-     * SQL name of the field.
-     * @return name of the field
+     * SQL name of the column.
+     * @return name of the column
      */
     String value();
 
     /**
-     * Defines if the field can be NULL.
-     * @return <code>true</code> if the field can take NULL values
+     * Defines if the column can be NULL.
+     * @return <code>true</code> if the column can take NULL values
      */
     boolean nullable() default true;
 
     /**
-     * Defines length of the field.
-     * @return length of the field
+     * Defines length of the column.
+     * @return length of the column
      */
     int length() default LENGTH;
 
@@ -92,4 +92,16 @@ public @interface Column {
      * @return if column contains json
      */
     boolean isJson() default false;
+
+    /**
+     * Defines if UUID column should be stored as binary column. For MySQL only.
+     * @return if store UUID as binary
+     */
+    boolean storeUuidAsBinary() default false;
+
+    /**
+     * Defines if column should have unique constraint.
+     * @return if column is unique
+     */
+    boolean unique() default false;
 }

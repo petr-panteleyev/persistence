@@ -31,7 +31,7 @@ import java.lang.annotation.RetentionPolicy;
 import java.lang.annotation.Target;
 
 /**
- * Defines index for the table field.
+ * Defines index for the table column.
  */
 
 @Retention(RetentionPolicy.RUNTIME)

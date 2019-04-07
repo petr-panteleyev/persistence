@@ -28,6 +28,7 @@ package org.panteleyev.persistence;
 
 import org.panteleyev.persistence.base.Base;
 import org.panteleyev.persistence.model.RecordWithUuid;
+import org.testng.Assert;
 import org.testng.annotations.Test;
 import java.util.Collections;
 import java.util.UUID;
@@ -44,22 +45,28 @@ public class UuidRecordTest extends Base {
 
         int id = getDao().generatePrimaryKey(RecordWithUuid.class);
         UUID uuid = UUID.randomUUID();
+        UUID uuidBin = UUID.randomUUID();
 
-        var record = new RecordWithUuid(id, uuid);
+        var record = new RecordWithUuid(id, uuid, uuidBin);
 
         getDao().insert(record);
 
-        var inserted = getDao().get(id, RecordWithUuid.class);
-        assertEquals(inserted.getId(), record.getId());
-        assertEquals(inserted.getUuid(), record.getUuid());
+        getDao().get(id, RecordWithUuid.class).ifPresentOrElse(inserted -> {
+            assertEquals(inserted.getId(), record.getId());
+            assertEquals(inserted.getUuid(), record.getUuid());
+            assertEquals(inserted.getUuidBin(), record.getUuidBin());
+        }, Assert::fail);
 
         // Update
         var newUuid = UUID.randomUUID();
-        var update = new RecordWithUuid(id, newUuid);
+        var newUuidBin = UUID.randomUUID();
+        var update = new RecordWithUuid(id, newUuid, newUuidBin);
         getDao().update(update);
 
-        var updated = getDao().get(id, RecordWithUuid.class);
-        assertEquals(updated.getId(), record.getId());
-        assertEquals(updated.getUuid(), newUuid);
+        getDao().get(id, RecordWithUuid.class).ifPresentOrElse(updated -> {
+            assertEquals(updated.getId(), record.getId());
+            assertEquals(updated.getUuid(), newUuid);
+            assertEquals(updated.getUuidBin(), newUuidBin);
+        }, Assert::fail);
     }
 }
