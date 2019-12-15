@@ -26,7 +26,6 @@
 
 package org.panteleyev.persistence;
 
-import org.panteleyev.persistence.base.Base;
 import org.panteleyev.persistence.model.IntegerPrimaryKeyRecord;
 import org.panteleyev.persistence.model.NoPrimaryKeyRecord;
 import org.panteleyev.persistence.model.NonAutoIncrementPrimaryKeyRecord;
@@ -35,10 +34,11 @@ import org.testng.annotations.Test;
 import java.util.List;
 import java.util.UUID;
 import static org.panteleyev.persistence.base.Base.GENERIC_GROUP;
+import static org.panteleyev.persistence.base.Base.RANDOM;
 import static org.testng.Assert.assertEquals;
 
 @Test(groups = GENERIC_GROUP)
-public class PrimaryKeyTest extends Base {
+public class PrimaryKeyTest {
 
     @Test
     public void testGetPrimaryKey() {

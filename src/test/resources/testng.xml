@@ -33,17 +33,9 @@
                 <include name="sqlite"/>
             </run>
         </groups>
-        <classes>
-            <class name="org.panteleyev.persistence.ForeignKeyTest"/>
-            <class name="org.panteleyev.persistence.SelfReferenceForeignKeyTest"/>
-            <class name="org.panteleyev.persistence.JsonTest"/>
-            <class name="org.panteleyev.persistence.RecordsTest"/>
-            <class name="org.panteleyev.persistence.TableCreationTest"/>
-            <class name="org.panteleyev.persistence.UuidRecordTest"/>
-            <class name="org.panteleyev.persistence.StringPrimaryKeyTest"/>
-            <class name="org.panteleyev.persistence.UuidPrimaryKeyTest"/>
-            <class name="org.panteleyev.persistence.BatchInsertTest"/>
-        </classes>
+        <packages>
+            <package name="org.panteleyev.persistence.*" />
+        </packages>
     </test>
     <test name="MySQL">
         <groups>
@@ -51,23 +43,18 @@
                 <include name="mysql"/>
             </run>
         </groups>
-        <classes>
-            <class name="org.panteleyev.persistence.ForeignKeyTest"/>
-            <class name="org.panteleyev.persistence.SelfReferenceForeignKeyTest"/>
-            <class name="org.panteleyev.persistence.JsonTest"/>
-            <class name="org.panteleyev.persistence.RecordsTest"/>
-            <class name="org.panteleyev.persistence.TableCreationTest"/>
-            <class name="org.panteleyev.persistence.UuidRecordTest"/>
-            <class name="org.panteleyev.persistence.StringPrimaryKeyTest"/>
-            <class name="org.panteleyev.persistence.UuidPrimaryKeyTest"/>
-            <class name="org.panteleyev.persistence.BatchInsertTest"/>
-        </classes>
+        <packages>
+            <package name="org.panteleyev.persistence.*" />
+        </packages>
     </test>
     <test name="Generic">
-        <classes>
-            <class name="org.panteleyev.persistence.DaoTest"/>
-            <class name="org.panteleyev.persistence.UtilitiesTest"/>
-            <class name="org.panteleyev.persistence.PrimaryKeyTest"/>
-        </classes>
+        <groups>
+            <run>
+                <include name="generic"/>
+            </run>
+        </groups>
+        <packages>
+            <package name="org.panteleyev.persistence.*" />
+        </packages>
     </test>
 </suite>
